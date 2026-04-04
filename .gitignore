@@ -1,22 +1,54 @@
+# Node.js / Frontend
 node_modules/
 .next/
 dist/
 build/
 coverage/
 .turbo/
+
+# Python / Backend
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+.eggs/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Environment
 .env
 .env.*
+.env.local
+
+# OS
 .DS_Store
-.idea/
-.vscode/
-.vscode-test/
 Thumbs.db
-*.log
 *.tmp
 *.swp
 
+# IDE
+.idea/
+.vscode/
+.vscode-test/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Project specific
 .worktrees/
 .opencode/
 .opencode-dev/
-
 .sisyphus/
+
+# Colab worker
+*.ipynb_checkpoints/

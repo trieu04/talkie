@@ -25,15 +25,15 @@
 
 **Purpose**: Project initialization and basic structure for all three codebases
 
-- [ ] T001 Create monorepo structure with backend/, frontend/, colab-worker/ directories
-- [ ] T002 [P] Initialize backend Python project with pyproject.toml and requirements.txt
-- [ ] T003 [P] Initialize frontend React+Vite project with package.json and TypeScript config
-- [ ] T004 [P] Initialize colab-worker Python project structure
-- [ ] T005 [P] Configure backend linting (ruff, black) and typing (mypy) in backend/pyproject.toml
-- [ ] T006 [P] Configure frontend linting (ESLint) and formatting (Prettier) in frontend/
-- [ ] T007 [P] Create docker-compose.yml with PostgreSQL, Redis, MinIO services
-- [ ] T008 [P] Create backend .env.example with all environment variables from quickstart.md
-- [ ] T009 [P] Create frontend .env.example with VITE_API_URL and VITE_WS_URL
+- [x] T001 Create monorepo structure with backend/, frontend/, colab-worker/ directories
+- [x] T002 [P] Initialize backend Python project with pyproject.toml and requirements.txt
+- [x] T003 [P] Initialize frontend React+Vite project with package.json and TypeScript config
+- [x] T004 [P] Initialize colab-worker Python project structure
+- [x] T005 [P] Configure backend linting (ruff, black) and typing (mypy) in backend/pyproject.toml
+- [x] T006 [P] Configure frontend linting (ESLint) and formatting (Prettier) in frontend/
+- [x] T007 [P] Create docker-compose.yml with PostgreSQL, Redis, MinIO services
+- [x] T008 [P] Create backend .env.example with all environment variables from quickstart.md
+- [x] T009 [P] Create frontend .env.example with VITE_API_URL and VITE_WS_URL
 
 ---
 

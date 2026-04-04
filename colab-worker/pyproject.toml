@@ -1,0 +1,26 @@
+[project]
+name = "talkie-worker"
+version = "0.1.0"
+description = "Talkie - GPU Worker for Speech-to-Text Processing"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "faster-whisper>=1.0.0",
+    "httpx>=0.26.0",
+    "numpy>=1.26.0",
+    "soundfile>=0.12.1",
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+    "silero-vad>=5.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,16 @@
+# Development dependencies
+-r requirements.txt
+
+# Testing
+pytest>=7.4.4
+pytest-asyncio>=0.23.3
+pytest-cov>=4.1.0
+
+# Linting and formatting
+ruff>=0.1.14
+mypy>=1.8.0
+black>=24.1.1
+
+# Type stubs
+types-passlib>=1.7.7
+types-python-jose>=3.3.4
