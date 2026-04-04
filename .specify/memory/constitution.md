@@ -1,200 +1,159 @@
 <!--
-=== Sync Impact Report ===
-- Version: N/A → 1.0.0 (khởi tạo lần đầu)
-- Nguyên tắc được thêm:
-  - I. Chất Lượng Mã Nguồn
-  - II. Tiêu Chuẩn Kiểm Thử
-  - III. Nhất Quán Trải Nghiệm Người Dùng
-  - IV. Yêu Cầu Hiệu Năng
-- Mục được thêm:
-  - Ràng Buộc Kỹ Thuật
-  - Quy Trình Phát Triển
-  - Quản Trị
-- Mục bị xoá: Không có
-- Templates cần cập nhật:
-  - .specify/templates/plan-template.md ✅ không cần thay đổi
-    (Constitution Check tham chiếu động từ file constitution)
-  - .specify/templates/spec-template.md ✅ không cần thay đổi
-    (Cấu trúc requirements/acceptance criteria tương thích)
-  - .specify/templates/tasks-template.md ✅ không cần thay đổi
-    (Phân loại task theo user story, tương thích với nguyên tắc)
-  - .specify/templates/commands/*.md ✅ không tồn tại
-- TODO chưa giải quyết: Không có
-========================
+  Sync Impact Report
+  ==================
+  Version change: N/A (initial) → 1.0.0
+  Modified principles: N/A (first ratification)
+  Added sections:
+    - Core Principles (4): Code Quality, Testing Standards,
+      UX Consistency, Performance Requirements
+    - Ràng Buộc Kỹ Thuật (Technical Constraints)
+    - Quy Trình Phát Triển (Development Workflow)
+    - Governance
+  Removed sections: None
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ no update needed
+      (Constitution Check section is dynamically filled)
+    - .specify/templates/spec-template.md ✅ no update needed
+      (requirements/success criteria align with principles)
+    - .specify/templates/tasks-template.md ✅ no update needed
+      (test phases and quality gates align with principles)
+    - .specify/templates/commands/*.md ✅ directory does not exist
+  Follow-up TODOs: None
 -->
 
 # Talkie Constitution
 
-## Nguyên Tắc Cốt Lõi
+## Core Principles
 
-### I. Chất Lượng Mã Nguồn
+### I. Chất Lượng Code (Code Quality)
 
-Mọi mã nguồn trong dự án Talkie PHẢI tuân thủ các quy tắc sau:
+Mọi code được merge vào nhánh chính PHẢI đạt các tiêu chuẩn sau:
 
-- **Không chấp nhận type suppression**: TUYỆT ĐỐI KHÔNG sử dụng
-  `as any`, `@ts-ignore`, `@ts-expect-error`, hoặc bất kỳ cách
-  nào để bỏ qua lỗi kiểu dữ liệu. Mọi lỗi type PHẢI được sửa
-  tại gốc.
-- **Lint và format bắt buộc**: Mọi code PHẢI pass linter và
-  formatter đã cấu hình trước khi merge. Không có ngoại lệ.
-- **Nguyên tắc Single Responsibility**: Mỗi module, function,
-  và component CHỈ đảm nhận một trách nhiệm duy nhất. Function
-  vượt quá 50 dòng PHẢI được tách nhỏ hoặc có justification
-  rõ ràng.
-- **Xử lý lỗi nghiêm ngặt**: KHÔNG có catch block rỗng.
-  Mọi lỗi PHẢI được xử lý cụ thể hoặc propagate lên với
-  context đầy đủ.
-- **Đặt tên rõ ràng**: Tên biến, function, và file PHẢI
-  truyền đạt mục đích sử dụng. Không viết tắt trừ các thuật
-  ngữ phổ biến (e.g., `id`, `url`, `api`).
-- **Code review bắt buộc**: Mọi thay đổi PHẢI được review
-  trước khi merge vào nhánh chính.
+- **Type Safety**: PHẢI sử dụng strict typing. KHÔNG được dùng
+  `as any`, `@ts-ignore`, hoặc `@ts-expect-error` để suppress lỗi.
+  Mọi type error PHẢI được sửa tại gốc vấn đề.
+- **Linting & Formatting**: Mọi code PHẢI pass toàn bộ linting rules
+  và formatting rules đã cấu hình. KHÔNG có exception trừ khi được
+  document rõ ràng lý do trong code review.
+- **Clean Code**: Functions PHẢI có single responsibility. Tên biến
+  và hàm PHẢI mô tả rõ mục đích. KHÔNG duplicate logic — extract
+  thành shared utility hoặc module.
+- **Error Handling**: KHÔNG được có empty catch blocks. Mọi error
+  PHẢI được handle có chủ đích: log, propagate, hoặc recover.
+  Error messages PHẢI cung cấp đủ context để debug.
+- **Code Review**: Mọi thay đổi PHẢI qua code review trước khi merge.
+  Reviewer PHẢI verify compliance với constitution này.
 
-**Lý do**: Talkie là sản phẩm realtime — mã nguồn kém chất
-lượng trực tiếp gây crash hoặc lỗi âm thầm trong cuộc họp,
-ảnh hưởng tới trải nghiệm người dùng ngay lập tức.
+### II. Tiêu Chuẩn Testing (Testing Standards)
 
-### II. Tiêu Chuẩn Kiểm Thử
+Testing là yêu cầu bắt buộc, không phải tuỳ chọn:
 
-Mọi tính năng trong Talkie PHẢI có kiểm thử đi kèm:
+- **Test Coverage**: Mọi feature mới PHẢI có test đi kèm.
+  Business logic PHẢI đạt tối thiểu 80% branch coverage.
+- **Test Pyramid**: Tuân thủ test pyramid — nhiều unit tests,
+  vừa phải integration tests, ít end-to-end tests. Unit tests
+  PHẢI chạy nhanh (< 5 giây cho toàn bộ unit test suite).
+- **Test Quality**: Tests PHẢI test behavior, KHÔNG test
+  implementation details. Mỗi test PHẢI có tên mô tả rõ
+  scenario đang test. KHÔNG dùng test names chung chung
+  như "test1", "should work".
+- **Regression Testing**: Mọi bug fix PHẢI kèm theo regression test
+  chứng minh bug đã được sửa. Test này PHẢI fail trước khi
+  apply fix và pass sau khi fix.
+- **Test Independence**: Tests PHẢI chạy độc lập, không phụ thuộc
+  vào thứ tự thực thi hoặc shared mutable state giữa các tests.
 
-- **Unit test bắt buộc cho business logic**: Mọi service,
-  utility function, và data transformation PHẢI có unit test
-  với coverage tối thiểu 80% cho logic branches.
-- **Integration test cho luồng chính**: Mỗi user story PHẢI
-  có ít nhất một integration test xác minh luồng end-to-end
-  hoạt động đúng.
-- **Test PHẢI có tính độc lập**: Mỗi test case PHẢI chạy
-  độc lập, không phụ thuộc vào thứ tự thực thi hoặc state
-  từ test khác.
-- **Test PHẢI fail trước khi implement**: Khi viết test cho
-  tính năng mới, test PHẢI fail trước (Red), sau đó mới
-  implement để pass (Green), rồi refactor.
-- **Không xoá test để pass**: TUYỆT ĐỐI KHÔNG xoá hoặc
-  skip test đang fail để "đạt" CI. Test fail PHẢI được sửa
-  hoặc có issue tracking rõ ràng.
-- **Edge case cho realtime**: Các tính năng liên quan đến
-  audio streaming, transcript, và translation PHẢI test với
-  các điều kiện: mất kết nối, độ trễ cao, dữ liệu không
-  hợp lệ, và concurrent sessions.
+### III. Nhất Quán Trải Nghiệm Người Dùng (UX Consistency)
 
-**Lý do**: Talkie xử lý audio và text realtime — bug không
-được phát hiện sớm sẽ gây mất dữ liệu transcript của
-người dùng, không thể khôi phục.
+Trải nghiệm người dùng PHẢI nhất quán và dễ dự đoán:
 
-### III. Nhất Quán Trải Nghiệm Người Dùng
+- **Design System**: Mọi UI component PHẢI tuân thủ design system
+  đã định nghĩa. KHÔNG tạo one-off styles hoặc custom components
+  khi đã có component tương đương trong design system.
+- **Interaction Patterns**: Các hành động tương tự PHẢI có behavior
+  tương tự xuyên suốt ứng dụng. Ví dụ: mọi form PHẢI có cùng
+  validation flow, cùng error display pattern, cùng loading state.
+- **Accessibility**: PHẢI đảm bảo tối thiểu WCAG 2.1 Level AA.
+  Keyboard navigation, screen reader support, và color contrast
+  PHẢI được test cho mọi feature mới.
+- **Localization**: Talkie hỗ trợ đa ngôn ngữ. Mọi user-facing
+  text PHẢI được externalize qua i18n system. KHÔNG hard-code
+  strings trực tiếp trong components.
+- **Error States & Feedback**: Mọi thao tác của người dùng PHẢI
+  có feedback rõ ràng: loading indicators cho async operations,
+  success/error notifications, và graceful degradation khi
+  offline hoặc gặp lỗi.
 
-Mọi giao diện và tương tác trong Talkie PHẢI nhất quán:
+### IV. Yêu Cầu Hiệu Năng (Performance Requirements)
 
-- **Design system bắt buộc**: Mọi component UI PHẢI sử
-  dụng design tokens (colors, spacing, typography) từ
-  design system chung. KHÔNG hardcode giá trị style.
-- **Hành vi tương tác đồng nhất**: Cùng một loại thao
-  tác (click, swipe, drag) PHẢI cho kết quả giống nhau
-  trên toàn bộ ứng dụng. Không có ngoại lệ trừ khi
-  có justification UX rõ ràng.
-- **Trạng thái loading và error**: Mọi thao tác async
-  PHẢI hiển thị trạng thái loading. Mọi lỗi PHẢI có
-  thông báo rõ ràng bằng ngôn ngữ người dùng hiểu được,
-  kèm hướng dẫn khắc phục nếu có thể.
-- **Hỗ trợ đa ngôn ngữ**: Mọi chuỗi hiển thị cho
-  người dùng PHẢI đi qua hệ thống i18n. KHÔNG hardcode
-  text trực tiếp trong component.
-- **Accessibility cơ bản**: Mọi element tương tác PHẢI
-  có label phù hợp. Contrast ratio PHẢI đạt WCAG AA
-  (tối thiểu 4.5:1 cho text thường).
-- **Responsive và adaptive**: Giao diện PHẢI hoạt động
-  chính xác trên các kích thước màn hình phổ biến
-  (mobile, tablet, desktop).
+Sản phẩm real-time đòi hỏi hiệu năng cao là bắt buộc:
 
-**Lý do**: Talkie được sử dụng trong cuộc họp — người
-dùng không có thời gian để "tìm hiểu" giao diện. Mọi
-thao tác PHẢI trực quan và nhất quán.
+- **Latency**: Transcript hiển thị PHẢI có độ trễ tối đa 500ms
+  từ khi nhận audio. UI interactions PHẢI respond trong 100ms.
+  API responses PHẢI trả về trong 200ms (p95).
+- **Bundle Size**: Frontend bundle PHẢI được tối ưu. Lazy loading
+  PHẢI được áp dụng cho mọi route và heavy components.
+  KHÔNG import toàn bộ library khi chỉ dùng một phần.
+- **Memory**: Ứng dụng PHẢI không có memory leaks. Mọi
+  subscriptions, event listeners, và timers PHẢI được cleanup
+  đúng cách. Memory usage PHẢI ổn định trong sessions kéo dài
+  (> 2 giờ họp liên tục).
+- **Real-time Processing**: Audio streaming và transcript
+  processing PHẢI handle concurrent sessions mà không degradation.
+  WebSocket connections PHẢI có reconnection logic với
+  exponential backoff.
+- **Monitoring**: Performance metrics PHẢI được track trong
+  production. Bao gồm: response times, error rates, memory
+  usage, và WebSocket connection stability. Alerts PHẢI được
+  cấu hình cho khi metrics vượt ngưỡng cho phép.
 
-### IV. Yêu Cầu Hiệu Năng
+## Ràng Buộc Kỹ Thuật (Technical Constraints)
 
-Talkie xử lý dữ liệu realtime, hiệu năng là yêu cầu
-bắt buộc, không phải tối ưu hoá sau:
+- **Dependencies**: PHẢI ưu tiên sử dụng thư viện đã có trong
+  project trước khi thêm dependency mới. Mọi dependency mới
+  PHẢI được justify trong pull request description.
+- **Security**: Mọi user input PHẢI được sanitize. Authentication
+  tokens PHẢI có expiration. Sensitive data PHẢI được encrypt
+  at rest và in transit. KHÔNG log sensitive information.
+- **Backward Compatibility**: API changes PHẢI backward compatible
+  trừ khi có migration plan rõ ràng và được approve. Breaking
+  changes PHẢI được communicate trước ít nhất 1 sprint.
+- **Documentation**: Mọi public API, complex business logic, và
+  architectural decisions PHẢI được document. Code comments
+  giải thích "tại sao" (why), không phải "cái gì" (what).
 
-- **Độ trễ transcript**: Từ lúc người dùng nói đến lúc
-  text hiển thị KHÔNG ĐƯỢC vượt quá 2 giây (p95) trong
-  điều kiện mạng bình thường.
-- **Độ trễ translation**: Bản dịch PHẢI hiển thị trong
-  vòng 3 giây (p95) sau khi transcript gốc xuất hiện.
-- **Thời gian khởi động**: Ứng dụng PHẢI sẵn sàng sử
-  dụng trong vòng 3 giây sau khi mở.
-- **Sử dụng bộ nhớ**: Ứng dụng client KHÔNG ĐƯỢC sử
-  dụng quá 200MB RAM trong session bình thường (cuộc
-  họp dưới 2 giờ).
-- **Không memory leak**: Mọi component và subscription
-  PHẢI được cleanup đúng cách. Memory usage KHÔNG ĐƯỢC
-  tăng liên tục theo thời gian session.
-- **Bundle size**: JavaScript bundle cho initial load
-  KHÔNG ĐƯỢC vượt quá 300KB (gzipped). Sử dụng code
-  splitting cho các tính năng không thiết yếu.
-- **Đo lường bắt buộc**: Mọi API endpoint PHẢI có
-  metric đo latency (p50, p95, p99). Mọi thay đổi
-  ảnh hưởng performance PHẢI có benchmark trước và sau.
+## Quy Trình Phát Triển (Development Workflow)
 
-**Lý do**: Sản phẩm realtime có độ trễ cao đồng nghĩa
-với sản phẩm hỏng. Người dùng trong cuộc họp cần
-transcript tức thời — mỗi giây trễ thêm là mỗi giây
-mất thông tin.
+- **Branch Strategy**: Mỗi feature/bugfix PHẢI được phát triển
+  trên branch riêng. Branch name PHẢI theo format:
+  `feature/[short-description]` hoặc `fix/[short-description]`.
+- **Commit Messages**: Tuân thủ Conventional Commits format.
+  Mỗi commit PHẢI có scope rõ ràng. Ví dụ:
+  `feat(transcript): add real-time translation support`.
+- **Quality Gates**: Trước khi merge, PHẢI pass: linting,
+  type checking, unit tests, integration tests (nếu có),
+  và build thành công. CI pipeline PHẢI enforce tất cả gates.
+- **Incremental Delivery**: Features PHẢI được chia thành
+  increments nhỏ, có thể deliver và test độc lập. Mỗi
+  increment PHẢI mang lại giá trị cho người dùng hoặc
+  tạo nền tảng rõ ràng cho increment tiếp theo.
 
-## Ràng Buộc Kỹ Thuật
+## Governance
 
-Các ràng buộc kỹ thuật bổ sung áp dụng cho toàn bộ dự án:
+Constitution này là tài liệu cao nhất quy định tiêu chuẩn
+phát triển cho Talkie. Mọi quy trình, code review, và
+technical decisions PHẢI tuân thủ các nguyên tắc trong này.
 
-- **Dependency management**: Ưu tiên sử dụng thư viện
-  đã có trong dự án trước khi thêm dependency mới. Mọi
-  dependency mới PHẢI được justify trong PR description.
-- **Bảo mật dữ liệu cuộc họp**: Nội dung transcript và
-  audio PHẢI được mã hoá khi truyền tải (TLS) và khi lưu
-  trữ (encryption at rest). KHÔNG log nội dung cuộc họp
-  vào hệ thống logging chung.
-- **Backward compatibility**: API changes KHÔNG ĐƯỢC break
-  client cũ. Sử dụng versioning hoặc deprecation period
-  tối thiểu 2 sprint trước khi loại bỏ endpoint/field.
-- **Structured logging**: Mọi log PHẢI ở dạng structured
-  (JSON) với các field bắt buộc: timestamp, level,
-  service, correlation_id.
-
-## Quy Trình Phát Triển
-
-Quy trình phát triển áp dụng cho mọi thành viên:
-
-- **Branch strategy**: Mỗi tính năng/bugfix PHẢI được
-  phát triển trên branch riêng từ nhánh chính.
-- **PR requirements**: Mọi PR PHẢI có description rõ ràng,
-  pass CI (lint + test + build), và được ít nhất 1 người
-  review approve.
-- **Commit messages**: Sử dụng conventional commits format
-  (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `perf:`).
-- **Kiểm tra constitution**: Mọi PR review PHẢI xác minh
-  rằng thay đổi tuân thủ các nguyên tắc trong constitution
-  này. Reviewer có quyền reject nếu vi phạm.
-- **Hotfix process**: Bugfix critical trong production PHẢI
-  được sửa tối thiểu (minimal fix), KHÔNG refactor kèm theo.
-  Refactor PHẢI được thực hiện trong PR riêng sau đó.
-
-## Quản Trị
-
-Constitution này có hiệu lực cao nhất trong dự án Talkie,
-vượt trên mọi quy ước không chính thức khác.
-
-- **Sửa đổi**: Mọi thay đổi constitution PHẢI được đề xuất
-  dưới dạng PR, có mô tả lý do thay đổi, và được team lead
-  approve. Thay đổi PHẢI bao gồm cập nhật version theo
-  semantic versioning.
-- **Versioning**:
-  - MAJOR: Xoá hoặc thay đổi căn bản nguyên tắc hiện có
-  - MINOR: Thêm nguyên tắc mới hoặc mở rộng đáng kể
-  - PATCH: Sửa từ ngữ, làm rõ, sửa lỗi chính tả
-- **Compliance review**: Mỗi sprint retrospective PHẢI bao
-  gồm đánh giá mức độ tuân thủ constitution. Vi phạm lặp
-  lại PHẢI có action item cụ thể.
-- **Tài liệu hướng dẫn**: Sử dụng các template trong
-  `.specify/templates/` cho spec, plan, và tasks để đảm bảo
-  tính nhất quán với constitution.
+- **Tuân thủ**: Mọi pull requests và code reviews PHẢI
+  verify compliance với constitution. Violations PHẢI được
+  flag và sửa trước khi merge.
+- **Sửa đổi**: Thay đổi constitution yêu cầu: (1) document
+  rõ lý do thay đổi, (2) review và approve bởi tech lead,
+  (3) migration plan cho code hiện tại nếu cần.
+- **Versioning**: Constitution tuân thủ Semantic Versioning:
+  MAJOR cho thay đổi incompatible, MINOR cho thêm nguyên tắc
+  mới, PATCH cho clarifications và sửa lỗi chính tả.
+- **Review định kỳ**: Constitution PHẢI được review mỗi quý
+  để đảm bảo vẫn phù hợp với direction của sản phẩm.
 
 **Version**: 1.0.0 | **Ratified**: 2026-04-04 | **Last Amended**: 2026-04-04
