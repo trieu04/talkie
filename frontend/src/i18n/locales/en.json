@@ -1,0 +1,74 @@
+{
+  "common": {
+    "appName": "Talkie",
+    "welcome": "Realtime meeting transcription",
+    "login": "Log in",
+    "register": "Create account",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "displayName": "Display name",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "history": "History",
+    "home": "Home",
+    "meeting": "Meeting",
+    "joinMeeting": "Join meeting",
+    "loading": "Loading...",
+    "toggleTheme": "Toggle theme",
+    "switchLanguage": "Switch language",
+    "viewAll": "View all"
+  },
+  "home": {
+    "createMeeting": "Create Meeting",
+    "createMeetingDescription": "Start a new meeting with real-time transcription and translation.",
+    "meetingTitle": "Meeting title",
+    "meetingTitlePlaceholder": "Optional meeting title",
+    "sourceLanguage": "Source language",
+    "recentMeetings": "Recent Meetings",
+    "noMeetings": "No meetings yet. Create your first meeting!",
+    "status": {
+      "created": "Created",
+      "recording": "Recording",
+      "paused": "Paused",
+      "ended": "Ended",
+      "ended_abnormal": "Ended"
+    }
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to create and manage realtime meetings.",
+    "registerTitle": "Create your Talkie account",
+    "registerSubtitle": "Start recording, transcribing, and translating meetings in realtime.",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "invalidEmail": "Enter a valid email address.",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordMismatch": "Passwords do not match.",
+    "displayNameRequired": "Display name is required.",
+    "loginFailed": "Unable to log in. Please try again.",
+    "registerFailed": "Unable to create your account. Please try again."
+  },
+  "recording": {
+    "connected": "Connected",
+    "reconnecting": "Reconnecting…",
+    "disconnected": "Disconnected",
+    "start": "Start recording",
+    "stop": "Stop recording",
+    "pause": "Pause recording",
+    "resume": "Resume recording",
+    "paused": "Paused",
+    "waitingConnection": "Waiting for connection…",
+    "recordingInProgress": "Recording in progress",
+    "recordingEnded": "Recording ended",
+    "microphoneDenied": "Microphone access was denied. Please allow microphone access in your browser settings.",
+    "grantMicrophoneAccess": "Allow microphone access"
+  },
+  "routes": {
+    "homeTitle": "Dashboard",
+    "meetingTitle": "Meeting room",
+    "joinTitle": "Join meeting",
+    "historyTitle": "Meeting history"
+  }
+}

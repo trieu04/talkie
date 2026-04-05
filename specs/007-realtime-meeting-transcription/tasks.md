@@ -45,46 +45,46 @@
 
 ### Database & Core Setup
 
-- [ ] T010 Configure SQLAlchemy 2.0 with async engine in backend/src/core/database.py
-- [ ] T011 Configure Alembic migrations in backend/alembic/
-- [ ] T012 [P] Create Host model in backend/src/models/host.py
-- [ ] T013 [P] Create Meeting model with status enum in backend/src/models/meeting.py
-- [ ] T014 [P] Create AudioChunk model with status enum in backend/src/models/audio_chunk.py
-- [ ] T015 [P] Create TranscriptSegment model in backend/src/models/transcript_segment.py
-- [ ] T016 [P] Create SegmentTranslation model in backend/src/models/segment_translation.py
-- [ ] T017 [P] Create MeetingSummary model in backend/src/models/meeting_summary.py
-- [ ] T018 Create initial Alembic migration with all models in backend/alembic/versions/
-- [ ] T019 Configure Redis connection in backend/src/core/redis.py
-- [ ] T020 Configure MinIO/S3 client in backend/src/core/storage.py
+- [x] T010 Configure SQLAlchemy 2.0 with async engine in backend/src/core/database.py
+- [x] T011 Configure Alembic migrations in backend/alembic/
+- [x] T012 [P] Create Host model in backend/src/models/host.py
+- [x] T013 [P] Create Meeting model with status enum in backend/src/models/meeting.py
+- [x] T014 [P] Create AudioChunk model with status enum in backend/src/models/audio_chunk.py
+- [x] T015 [P] Create TranscriptSegment model in backend/src/models/transcript_segment.py
+- [x] T016 [P] Create SegmentTranslation model in backend/src/models/segment_translation.py
+- [x] T017 [P] Create MeetingSummary model in backend/src/models/meeting_summary.py
+- [x] T018 Create initial Alembic migration with all models in backend/alembic/versions/
+- [x] T019 Configure Redis connection in backend/src/core/redis.py
+- [x] T020 Configure MinIO/S3 client in backend/src/core/storage.py
 
 ### Authentication Framework
 
-- [ ] T021 Implement JWT token generation/validation in backend/src/core/auth.py
-- [ ] T022 Create auth dependency for FastAPI routes in backend/src/core/dependencies.py
-- [ ] T023 Implement POST /auth/register endpoint in backend/src/api/auth.py
-- [ ] T024 Implement POST /auth/login endpoint in backend/src/api/auth.py
-- [ ] T025 Implement POST /auth/refresh endpoint in backend/src/api/auth.py
+- [x] T021 Implement JWT token generation/validation in backend/src/core/auth.py
+- [x] T022 Create auth dependency for FastAPI routes in backend/src/core/dependencies.py
+- [x] T023 Implement POST /auth/register endpoint in backend/src/api/auth.py
+- [x] T024 Implement POST /auth/login endpoint in backend/src/api/auth.py
+- [x] T025 Implement POST /auth/refresh endpoint in backend/src/api/auth.py
 
 ### API & WebSocket Framework
 
-- [ ] T026 Create FastAPI app with CORS middleware in backend/src/main.py
-- [ ] T027 Create base Pydantic schemas for API responses in backend/src/schemas/base.py
-- [ ] T028 Create error handling middleware with error codes in backend/src/core/exceptions.py
-- [ ] T029 Setup WebSocket manager for connection handling in backend/src/core/websocket_manager.py
+- [x] T026 Create FastAPI app with CORS middleware in backend/src/main.py
+- [x] T027 Create base Pydantic schemas for API responses in backend/src/schemas/base.py
+- [x] T028 Create error handling middleware with error codes in backend/src/core/exceptions.py
+- [x] T029 Setup WebSocket manager for connection handling in backend/src/core/websocket_manager.py
 
 ### Frontend Core Setup
 
-- [ ] T030 Configure Zustand store structure in frontend/src/stores/
-- [ ] T031 [P] Create auth store in frontend/src/stores/authStore.ts
-- [ ] T032 [P] Create meeting store in frontend/src/stores/meetingStore.ts
-- [ ] T033 [P] Create transcript store in frontend/src/stores/transcriptStore.ts
-- [ ] T034 Configure MUI theme and provider in frontend/src/theme/
-- [ ] T035 Configure react-i18next with vi/en locales in frontend/src/i18n/
-- [ ] T036 Create API client with axios in frontend/src/services/api.ts
-- [ ] T037 Create WebSocket service with reconnection logic in frontend/src/services/websocket.ts
-- [ ] T038 Create React Router setup with routes in frontend/src/App.tsx
-- [ ] T039 [P] Create Login page component in frontend/src/pages/Login.tsx
-- [ ] T040 [P] Create Register page component in frontend/src/pages/Register.tsx
+- [x] T030 Configure Zustand store structure in frontend/src/stores/
+- [x] T031 [P] Create auth store in frontend/src/stores/authStore.ts
+- [x] T032 [P] Create meeting store in frontend/src/stores/meetingStore.ts
+- [x] T033 [P] Create transcript store in frontend/src/stores/transcriptStore.ts
+- [x] T034 Configure MUI theme and provider in frontend/src/theme/
+- [x] T035 Configure react-i18next with vi/en locales in frontend/src/i18n/
+- [x] T036 Create API client with axios in frontend/src/services/api.ts
+- [x] T037 Create WebSocket service with reconnection logic in frontend/src/services/websocket.ts
+- [x] T038 Create React Router setup with routes in frontend/src/App.tsx
+- [x] T039 [P] Create Login page component in frontend/src/pages/Login.tsx
+- [x] T040 [P] Create Register page component in frontend/src/pages/Register.tsx
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -98,63 +98,63 @@
 
 ### Backend - Meeting Management
 
-- [ ] T041 [US1] Create MeetingService with create/start/stop logic in backend/src/services/meeting_service.py
-- [ ] T042 [US1] Implement POST /meetings endpoint in backend/src/api/meetings.py
-- [ ] T043 [US1] Implement GET /meetings/{id} endpoint in backend/src/api/meetings.py
-- [ ] T044 [US1] Implement POST /meetings/{id}/start endpoint in backend/src/api/meetings.py
-- [ ] T045 [US1] Implement POST /meetings/{id}/stop endpoint in backend/src/api/meetings.py
-- [ ] T046 [US1] Generate unique room_code on meeting creation in backend/src/services/meeting_service.py
+- [x] T041 [US1] Create MeetingService with create/start/stop logic in backend/src/services/meeting_service.py
+- [x] T042 [US1] Implement POST /meetings endpoint in backend/src/api/meetings.py
+- [x] T043 [US1] Implement GET /meetings/{id} endpoint in backend/src/api/meetings.py
+- [x] T044 [US1] Implement POST /meetings/{id}/start endpoint in backend/src/api/meetings.py
+- [x] T045 [US1] Implement POST /meetings/{id}/stop endpoint in backend/src/api/meetings.py
+- [x] T046 [US1] Generate unique room_code on meeting creation in backend/src/services/meeting_service.py
 
 ### Backend - Audio Upload & Storage
 
-- [ ] T047 [US1] Create AudioChunkService for upload handling in backend/src/services/audio_chunk_service.py
-- [ ] T048 [US1] Implement POST /meetings/{id}/audio endpoint in backend/src/api/meetings.py
-- [ ] T049 [US1] Store audio chunks to MinIO with storage_key pattern in backend/src/services/audio_chunk_service.py
+- [x] T047 [US1] Create AudioChunkService for upload handling in backend/src/services/audio_chunk_service.py
+- [x] T048 [US1] Implement POST /meetings/{id}/audio endpoint in backend/src/api/meetings.py
+- [x] T049 [US1] Store audio chunks to MinIO with storage_key pattern in backend/src/services/audio_chunk_service.py
 
 ### Backend - WebSocket for Host
 
-- [ ] T050 [US1] Create host WebSocket endpoint at /ws/meeting/{id}/host in backend/src/api/websocket.py
-- [ ] T051 [US1] Handle audio_chunk message type with base64 decoding in backend/src/api/websocket.py
-- [ ] T052 [US1] Handle recording_control messages (start/pause/resume/stop) in backend/src/api/websocket.py
-- [ ] T053 [US1] Send chunk_received acknowledgment to host in backend/src/api/websocket.py
-- [ ] T054 [US1] Implement ping/pong heartbeat handling in backend/src/api/websocket.py
+- [x] T050 [US1] Create host WebSocket endpoint at /ws/meeting/{id}/host in backend/src/api/websocket.py
+- [x] T051 [US1] Handle audio_chunk message type with base64 decoding in backend/src/api/websocket.py
+- [x] T052 [US1] Handle recording_control messages (start/pause/resume/stop) in backend/src/api/websocket.py
+- [x] T053 [US1] Send chunk_received acknowledgment to host in backend/src/api/websocket.py
+- [x] T054 [US1] Implement ping/pong heartbeat handling in backend/src/api/websocket.py
 
 ### Backend - Transcript Distribution
 
-- [ ] T055 [US1] Create TranscriptService for segment management in backend/src/services/transcript_service.py
-- [ ] T056 [US1] Implement Redis pub/sub for transcript broadcast in backend/src/services/transcript_service.py
-- [ ] T057 [US1] Send transcript_segment to connected clients via WebSocket in backend/src/api/websocket.py
-- [ ] T058 [US1] Handle partial vs finalized segments in backend/src/services/transcript_service.py
+- [x] T055 [US1] Create TranscriptService for segment management in backend/src/services/transcript_service.py
+- [x] T056 [US1] Implement Redis pub/sub for transcript broadcast in backend/src/services/transcript_service.py
+- [x] T057 [US1] Send transcript_segment to connected clients via WebSocket in backend/src/api/websocket.py
+- [x] T058 [US1] Handle partial vs finalized segments in backend/src/services/transcript_service.py
 
 ### Frontend - Meeting Creation Flow
 
-- [ ] T059 [US1] Create Home page with "Create Meeting" button in frontend/src/pages/Home.tsx
-- [ ] T060 [US1] Create MeetingCreate dialog with title and language selection in frontend/src/components/MeetingCreate.tsx
-- [ ] T061 [US1] Implement meeting creation API call in frontend/src/services/meetingApi.ts
+- [x] T059 [US1] Create Home page with "Create Meeting" button in frontend/src/pages/Home.tsx
+- [x] T060 [US1] Create MeetingCreate dialog with title and language selection in frontend/src/components/MeetingCreate.tsx
+- [x] T061 [US1] Implement meeting creation API call in frontend/src/services/meetingApi.ts
 
 ### Frontend - Recording Interface
 
-- [ ] T062 [US1] Create MeetingRoom page component in frontend/src/pages/MeetingRoom.tsx
-- [ ] T063 [US1] Create AudioRecorder hook using MediaRecorder API in frontend/src/hooks/useAudioRecorder.ts
-- [ ] T064 [US1] Request microphone permission and handle errors in frontend/src/hooks/useAudioRecorder.ts
-- [ ] T065 [US1] Chunk audio into 4s segments with 750ms overlap in frontend/src/hooks/useAudioRecorder.ts
-- [ ] T066 [US1] Create RecordingControls component (start/stop/pause) in frontend/src/components/RecordingControls.tsx
+- [x] T062 [US1] Create MeetingRoom page component in frontend/src/pages/MeetingRoom.tsx
+- [x] T063 [US1] Create AudioRecorder hook using MediaRecorder API in frontend/src/hooks/useAudioRecorder.ts
+- [x] T064 [US1] Request microphone permission and handle errors in frontend/src/hooks/useAudioRecorder.ts
+- [x] T065 [US1] Chunk audio into 4s segments with 750ms overlap in frontend/src/hooks/useAudioRecorder.ts
+- [x] T066 [US1] Create RecordingControls component (start/stop/pause) in frontend/src/components/RecordingControls.tsx
 
 ### Frontend - WebSocket & Transcript Display
 
-- [ ] T067 [US1] Connect to host WebSocket endpoint on meeting start in frontend/src/hooks/useMeetingWebSocket.ts
-- [ ] T068 [US1] Send audio_chunk messages via WebSocket in frontend/src/hooks/useMeetingWebSocket.ts
-- [ ] T069 [US1] Buffer audio during disconnection (up to 30s) in frontend/src/hooks/useAudioRecorder.ts
-- [ ] T070 [US1] Create TranscriptView component displaying segments in frontend/src/components/TranscriptView.tsx
-- [ ] T071 [US1] Handle transcript_segment messages and update store in frontend/src/hooks/useMeetingWebSocket.ts
-- [ ] T072 [US1] Auto-scroll transcript to latest segment in frontend/src/components/TranscriptView.tsx
-- [ ] T073 [US1] Show "waiting for processing" when no workers available in frontend/src/components/ProcessingStatus.tsx
+- [x] T067 [US1] Connect to host WebSocket endpoint on meeting start in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T068 [US1] Send audio_chunk messages via WebSocket in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T069 [US1] Buffer audio during disconnection (up to 30s) in frontend/src/hooks/useAudioRecorder.ts
+- [x] T070 [US1] Create TranscriptView component displaying segments in frontend/src/components/TranscriptView.tsx
+- [x] T071 [US1] Handle transcript_segment messages and update store in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T072 [US1] Auto-scroll transcript to latest segment in frontend/src/components/TranscriptView.tsx
+- [x] T073 [US1] Show "waiting for processing" when no workers available in frontend/src/components/ProcessingStatus.tsx
 
 ### Frontend - Connection Resilience
 
-- [ ] T074 [US1] Implement exponential backoff reconnection (1s-32s) in frontend/src/services/websocket.ts
-- [ ] T075 [US1] Send sync_request after reconnection in frontend/src/hooks/useMeetingWebSocket.ts
-- [ ] T076 [US1] Handle sync_response and merge missed segments in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T074 [US1] Implement exponential backoff reconnection (1s-32s) in frontend/src/services/websocket.ts
+- [x] T075 [US1] Send sync_request after reconnection in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T076 [US1] Handle sync_response and merge missed segments in frontend/src/hooks/useMeetingWebSocket.ts
 
 **Checkpoint**: Host can record meetings and see realtime transcript (requires Worker from US6 to process audio)
 

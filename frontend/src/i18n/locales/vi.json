@@ -1,0 +1,74 @@
+{
+  "common": {
+    "appName": "Talkie",
+    "welcome": "Phiên âm cuộc họp theo thời gian thực",
+    "login": "Đăng nhập",
+    "register": "Tạo tài khoản",
+    "logout": "Đăng xuất",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "displayName": "Tên hiển thị",
+    "submit": "Xác nhận",
+    "cancel": "Hủy",
+    "history": "Lịch sử",
+    "home": "Trang chủ",
+    "meeting": "Cuộc họp",
+    "joinMeeting": "Tham gia cuộc họp",
+    "loading": "Đang tải...",
+    "toggleTheme": "Đổi giao diện",
+    "switchLanguage": "Đổi ngôn ngữ",
+    "viewAll": "Xem tất cả"
+  },
+  "home": {
+    "createMeeting": "Tạo cuộc họp",
+    "createMeetingDescription": "Bắt đầu cuộc họp mới với phiên âm và dịch thuật theo thời gian thực.",
+    "meetingTitle": "Tiêu đề cuộc họp",
+    "meetingTitlePlaceholder": "Tiêu đề cuộc họp (tùy chọn)",
+    "sourceLanguage": "Ngôn ngữ nguồn",
+    "recentMeetings": "Cuộc họp gần đây",
+    "noMeetings": "Chưa có cuộc họp nào. Hãy tạo cuộc họp đầu tiên!",
+    "status": {
+      "created": "Đã tạo",
+      "recording": "Đang ghi",
+      "paused": "Tạm dừng",
+      "ended": "Đã kết thúc",
+      "ended_abnormal": "Đã kết thúc"
+    }
+  },
+  "auth": {
+    "loginTitle": "Chào mừng quay lại",
+    "loginSubtitle": "Đăng nhập để tạo và quản lý cuộc họp realtime.",
+    "registerTitle": "Tạo tài khoản Talkie",
+    "registerSubtitle": "Bắt đầu ghi âm, phiên âm và dịch cuộc họp theo thời gian thực.",
+    "noAccount": "Chưa có tài khoản?",
+    "hasAccount": "Đã có tài khoản?",
+    "invalidEmail": "Vui lòng nhập email hợp lệ.",
+    "passwordTooShort": "Mật khẩu phải có ít nhất 8 ký tự.",
+    "passwordMismatch": "Mật khẩu xác nhận không khớp.",
+    "displayNameRequired": "Tên hiển thị là bắt buộc.",
+    "loginFailed": "Không thể đăng nhập. Vui lòng thử lại.",
+    "registerFailed": "Không thể tạo tài khoản. Vui lòng thử lại."
+  },
+  "recording": {
+    "connected": "Đã kết nối",
+    "reconnecting": "Đang kết nối lại…",
+    "disconnected": "Mất kết nối",
+    "start": "Bắt đầu ghi âm",
+    "stop": "Dừng ghi âm",
+    "pause": "Tạm dừng ghi âm",
+    "resume": "Tiếp tục ghi âm",
+    "paused": "Đã tạm dừng",
+    "waitingConnection": "Đang chờ kết nối…",
+    "recordingInProgress": "Đang ghi âm",
+    "recordingEnded": "Đã kết thúc ghi âm",
+    "microphoneDenied": "Quyền truy cập micro bị từ chối. Vui lòng cho phép truy cập micro trong cài đặt trình duyệt.",
+    "grantMicrophoneAccess": "Cho phép truy cập micro"
+  },
+  "routes": {
+    "homeTitle": "Bảng điều khiển",
+    "meetingTitle": "Phòng họp",
+    "joinTitle": "Tham gia cuộc họp",
+    "historyTitle": "Lịch sử cuộc họp"
+  }
+}
