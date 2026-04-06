@@ -21,7 +21,7 @@ infra-reset: ## Stop infrastructure and delete volumes
 	docker compose down -v
 
 dev-backend: ## Start backend dev server
-	cd backend && source .venv/bin/activate && uv run uvicorn src.main:app --reload --port 8001
+	cd backend && source .venv/bin/activate && uv run uvicorn src.main:app --host 0.0.0.0 --reload --port 8001
 
 dev-frontend: ## Start frontend dev server
 	cd frontend && npm run dev
