@@ -73,6 +73,14 @@ class MeetingService:
         )
         return result.scalar_one_or_none()
 
+    async def get_replay_meeting_by_room_code(self, room_code: str) -> Meeting | None:
+        meeting = await self.get_meeting_by_room_code(room_code)
+        if meeting is None:
+            return None
+        if not self.is_replay_available(meeting):
+            return None
+        return meeting
+
     async def start_meeting(self, meeting_id: UUID, host_id: UUID) -> Meeting:
         meeting = await self._get_owned_meeting(meeting_id, host_id)
         self._ensure_status(meeting, {MeetingStatus.CREATED}, "start")
@@ -163,6 +171,10 @@ class MeetingService:
         if meeting.host_id != host_id:
             raise AuthorizationError("Only the meeting host can perform this action")
         return meeting
+
+    @staticmethod
+    def is_replay_available(meeting: Meeting) -> bool:
+        return meeting.status in {MeetingStatus.ENDED, MeetingStatus.ENDED_ABNORMAL}
 
     async def _ensure_no_other_active_meeting(
         self, host_id: UUID, exclude_meeting_id: UUID | None = None

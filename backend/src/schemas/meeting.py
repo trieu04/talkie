@@ -24,8 +24,10 @@ class MeetingResponse(BaseModel):
     started_at: datetime | None
     ended_at: datetime | None
     join_url: str
+    duration_seconds: int | None = None
     has_transcript: bool = False
     has_summary: bool = False
+    available_translations: list[str] = Field(default_factory=list)
 
 
 class MeetingListResponse(BaseModel):
@@ -84,6 +86,10 @@ class JoinMeetingResponse(BaseModel):
     status: str
     started_at: datetime | None
     websocket_url: str
+    duration_seconds: int | None = None
+    has_transcript: bool = False
+    has_summary: bool = False
+    available_translations: list[str] = Field(default_factory=list)
 
 
 class AudioChunkUpload(BaseModel):
