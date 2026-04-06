@@ -14,10 +14,10 @@ Build Talkie — a web application for real-time meeting transcription and trans
 **Language/Version**: TypeScript 5.x (frontend), Python 3.11+ (backend), Python (Colab worker)  
 **Primary Dependencies**: React + Vite, Zustand, MUI (frontend); FastAPI, SQLAlchemy 2.0, Dramatiq (backend); Faster-Whisper turbo (STT)  
 **Storage**: PostgreSQL (relational data), S3/MinIO (audio files), Redis (cache/real-time)  
-**Testing**: Vitest + React Testing Library + Playwright (frontend); pytest + pytest-asyncio + httpx (backend)  
+**Testing**: Vitest + React Testing Library + Playwright (frontend); pytest + pytest-asyncio + httpx (backend). These frameworks MUST appear as explicit implementation and validation tasks in tasks.md.  
 **Target Platform**: Modern web browsers (Chrome, Firefox, Edge), Linux server (backend)  
 **Project Type**: Web application (frontend + backend + distributed GPU workers)  
-**Performance Goals**: <10s transcript latency, <5s translation latency, <60s summary for 1hr meeting, 10+ concurrent participants  
+**Performance Goals**: <=500ms worker-result-to-screen transcript latency (p95), <=10s speech-to-screen transcript latency (p95), <5s translation latency, <60s summary for 1hr meeting, 10+ concurrent participants  
 **Constraints**: <500ms UI response, <200ms API p95, stable 2hr+ sessions, reconnection with exponential backoff  
 **Scale/Scope**: MVP scale, single host per meeting, 10+ participants viewing
 
@@ -27,41 +27,21 @@ Build Talkie — a web application for real-time meeting transcription and trans
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-### I. Code Quality ✓ PLANNED
-- [ ] TypeScript strict mode enabled
-- [ ] ESLint + Prettier configured
-- [ ] Python typing (mypy) configured
-- [ ] Error handling strategy defined
+This feature inherits all MUST/SHOULD requirements from `.specify/memory/constitution.md`.
 
-### II. Testing Standards ✓ PLANNED
-- [ ] Unit test framework selected
-- [ ] Integration test strategy for WebSocket
-- [ ] E2E test approach for recording flow
-- [ ] 80% branch coverage target
+### Inherited Quality Gates
+- Code quality, strict typing, linting, formatting, error handling, and review requirements are governed by the constitution and must be validated by explicit tasks in `tasks.md`.
+- Testing is mandatory: unit, integration, and E2E coverage must be represented in `tasks.md`, and business logic must meet the constitution's branch coverage threshold.
+- UX consistency requirements (design system, i18n, loading/error states, accessibility) are governed by the constitution and must have both implementation and verification tasks.
+- Performance requirements are governed by the constitution and refined for this feature by `spec.md` success criteria.
 
-### III. UX Consistency ✓ PLANNED
-- [ ] Design system / component library selected
-- [ ] i18n framework for localization
-- [ ] Loading states for all async operations
-- [ ] Error feedback patterns defined
-- [ ] Accessibility (WCAG 2.1 AA) compliance
+### Feature-Specific Compliance Notes
+- Transcript latency is measured with two distinct metrics and both must be validated: `worker-result-to-screen <=500ms (p95)` and `speech-to-screen <=10s (p95)`.
+- WebSocket reconnection with exponential backoff is mandatory for host and participant flows.
+- Public API documentation, worker architecture documentation, and replay-access/security documentation are required deliverables for this feature.
+- Validation tasks must explicitly cover lint, typecheck, build, tests, accessibility verification, and end-to-end quickstart flow.
 
-### IV. Performance Requirements ✓ CRITICAL
-- [ ] <500ms transcript display latency (from audio receipt)
-- [ ] <100ms UI interaction response
-- [ ] <200ms API response (p95)
-- [ ] Memory-safe for 2hr+ sessions
-- [ ] WebSocket reconnection with exponential backoff
-- [ ] Performance monitoring setup
-
-### Technical Constraints ✓ PLANNED
-- [ ] Dependency justification for new packages
-- [ ] Input sanitization strategy
-- [ ] Auth token expiration
-- [ ] Backward compatible API design
-- [ ] Public API documentation
-
-**Gate Status**: PASS (no violations, all items planned for Phase 0/1 resolution)
+**Gate Status**: CONDITIONAL PASS (implementation may proceed only if tasks.md includes explicit coverage for testing, validation, documentation, accessibility, and performance verification)
 
 ## Project Structure
 

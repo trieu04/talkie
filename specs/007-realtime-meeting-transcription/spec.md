@@ -29,7 +29,7 @@ Một người dùng đã đăng nhập (host) tạo phiên họp mới, chọn 
 **Acceptance Scenarios**:
 
 1. **Given** host đã đăng nhập và đang ở trang chủ, **When** host tạo phiên họp mới, chọn source language chính, và nhấn "Bắt đầu ghi âm", **Then** trình duyệt yêu cầu quyền microphone và bắt đầu thu âm sau khi được cấp quyền.
-2. **Given** host đang ghi âm, **When** host nói một câu, **Then** transcript của câu đó hiển thị trên màn hình trong vòng tối đa 10 giây.
+2. **Given** host đang ghi âm, **When** host nói một câu, **Then** transcript đầu tiên của câu đó xuất hiện trên màn hình trong vòng tối đa 15 giây, và mọi transcript segment đã được server nhận từ worker được phân phối đến client trong vòng tối đa 500ms (p95).
 3. **Given** host đang ghi âm, **When** kết nối mạng bị gián đoạn tạm thời (< 30 giây), **Then** hệ thống tự động reconnect và tiếp tục ghi âm, không mất dữ liệu audio đã buffer.
 4. **Given** host đang ghi âm, **When** host nhấn "Dừng ghi âm", **Then** hệ thống dừng thu âm, hoàn tất processing các audio chunks còn lại, và lưu toàn bộ raw audio trên server.
 5. **Given** host đang ghi âm và có người khác nói qua loa, **When** âm thanh từ loa được thu qua microphone, **Then** transcript bao gồm cả nội dung từ giọng phát qua loa.
@@ -96,7 +96,7 @@ Host đã đăng nhập truy cập danh sách các cuộc họp trước đó do
 **Acceptance Scenarios**:
 
 1. **Given** host đã đăng nhập và đã tạo ít nhất một cuộc họp trước đó, **When** host mở trang lịch sử cuộc họp, **Then** danh sách các cuộc họp do host tạo hiển thị với thông tin: tên/ngày, thời lượng, có transcript/translation/summary hay không.
-2. **Given** participant có link hoặc mã phòng của một cuộc họp đã kết thúc, **When** participant mở link hoặc nhập mã phòng đó, **Then** participant có thể xem lại transcript, translation, và summary của meeting mà không cần tài khoản.
+2. **Given** participant có link hoặc mã phòng hợp lệ của một cuộc họp đã kết thúc, **When** participant mở link hoặc nhập mã phòng đó, **Then** participant có thể xem lại transcript, translation, và summary của meeting mà không cần tài khoản, miễn là meeting vẫn chưa bị host xóa.
 3. **Given** người dùng đang xem một cuộc họp cũ, **When** chọn một cuộc họp cụ thể, **Then** transcript đầy đủ hiển thị với timeline, có thể cuộn và tìm kiếm nội dung.
 4. **Given** người dùng đang xem transcript của cuộc họp cũ, **When** người dùng chọn xem translation, **Then** bản dịch hiển thị song song với transcript gốc bằng translation đã lưu nếu đã tồn tại, hoặc được tạo mới rồi lưu lại nếu chưa có.
 5. **Given** cuộc họp cũ chưa có summary, **When** người dùng yêu cầu tạo summary, **Then** hệ thống tạo summary từ transcript đã lưu.
@@ -125,7 +125,7 @@ Hệ thống hỗ trợ mô hình GPU worker phân tán — các worker chạy d
 
 - Điều gì xảy ra khi không có GPU worker nào online trong khi host đang ghi âm? → Audio chunks được queue và xử lý ngay khi worker available. User thấy thông báo "đang chờ xử lý" thay vì transcript.
 - Điều gì xảy ra khi user chưa bật Google Colab notebook session trước khi meeting bắt đầu? → Server vẫn nhận và lưu audio chunks, nhưng transcript/translation chỉ bắt đầu xuất hiện sau khi notebook session được user bật và poll job.
-- Điều gì xảy ra khi cuộc họp kéo dài hơn 4 giờ? → Hệ thống tiếp tục hoạt động bình thường, audio được chunk và xử lý liên tục, không giới hạn thời lượng.
+- Điều gì xảy ra khi cuộc họp kéo dài hơn 4 giờ? → Đây KHÔNG phải cam kết của MVP. MVP chỉ bắt buộc xác nhận hệ thống hoạt động ổn định cho cuộc họp kéo dài tối thiểu 2 giờ liên tục; các cuộc họp dài hơn 4 giờ cần được kiểm chứng ở giai đoạn sau.
 - Điều gì xảy ra khi host đóng trình duyệt đột ngột? → Hệ thống lưu toàn bộ dữ liệu đã nhận đến thời điểm đó. Phiên họp chuyển sang trạng thái "kết thúc bất thường" và vẫn có thể xem lại.
 - Điều gì xảy ra khi chất lượng audio rất thấp (nhiều noise)? → Transcript vẫn được tạo với chất lượng tốt nhất có thể. Hệ thống không block vì audio quality.
 - Điều gì xảy ra khi nhiều người nói cùng lúc? → Hệ thống transcript tất cả âm thanh thu được qua mic — không phân biệt speaker riêng lẻ (single-stream recording).
@@ -155,7 +155,8 @@ Hệ thống hỗ trợ mô hình GPU worker phân tán — các worker chạy d
 
 **Transcript Realtime**
 - **FR-009**: Hệ thống PHẢI hiển thị transcript realtime cho cả host và tất cả participants đang trong phiên họp.
-- **FR-010**: Transcript PHẢI xuất hiện trong vòng tối đa 10 giây sau khi nói (end-to-end latency bao gồm audio streaming, queueing, STT processing, và delivery).
+- **FR-010**: Hệ thống PHẢI phân phối transcript segment đến host và participants trong vòng tối đa 500ms (p95) kể từ khi server nhận transcript result từ worker.
+- **FR-010a**: Hệ thống PHẢI đạt end-to-end speech-to-screen latency tối đa 10 giây (p95) cho transcript segment trong điều kiện hoạt động mục tiêu của MVP; transcript đầu tiên của meeting PHẢI xuất hiện trong vòng tối đa 15 giây sau câu nói đầu tiên.
 - **FR-011**: Transcript PHẢI được hiển thị theo thứ tự thời gian chính xác, không bị đảo lộn khi nhiều chunks được xử lý song song.
 
 **Translation**
@@ -173,7 +174,7 @@ Hệ thống hỗ trợ mô hình GPU worker phân tán — các worker chạy d
 - **FR-018**: Hệ thống PHẢI lưu trữ và cho phép truy cập lại toàn bộ transcript, translation, và summary của các cuộc họp trước.
 - **FR-019**: Hệ thống PHẢI cung cấp danh sách cuộc họp với metadata (ngày, thời lượng, trạng thái).
 - **FR-020**: Người dùng PHẢI có thể tìm kiếm nội dung trong transcript của cuộc họp cũ.
-- **FR-020a**: Participant có link hoặc mã phòng hợp lệ PHẢI có thể truy cập lại transcript, translation, và summary của meeting đã kết thúc mà không cần tài khoản.
+- **FR-020a**: Participant có link hoặc mã phòng hợp lệ PHẢI có thể truy cập lại transcript, translation, và summary của meeting đã kết thúc mà không cần tài khoản, miễn là meeting vẫn tồn tại và chưa bị host xóa.
 
 **GPU Worker Pipeline**
 - **FR-021**: GPU workers PHẢI chạy dưới dạng Google Colab notebook session do user tự bật và chủ động poll server để lấy audio chunks cần xử lý (pull model, không push).
@@ -190,18 +191,20 @@ Hệ thống hỗ trợ mô hình GPU worker phân tán — các worker chạy d
 - **Meeting (Cuộc họp)**: Đại diện cho một phiên ghi âm. Thuộc tính chính: định danh duy nhất, thời gian bắt đầu/kết thúc, trạng thái (đang diễn ra / đã kết thúc / kết thúc bất thường), host, source language chính, danh sách participants. Một meeting có nhiều transcript segments, translations, và tối đa một summary.
 - **Host Account (Tài khoản host)**: Đại diện cho người dùng có quyền tạo và quản lý cuộc họp. Thuộc tính chính: định danh tài khoản, thông tin đăng nhập, và danh sách meetings đã tạo. Một Host Account có thể sở hữu nhiều Meetings.
 - **Transcript Segment (Đoạn phiên âm)**: Một đoạn text được phiên âm từ audio. Thuộc tính: nội dung text, timestamp bắt đầu/kết thúc trong cuộc họp, thứ tự sequence. Thuộc về chính xác một Meeting.
-- **Translation (Bản dịch)**: Bản dịch của một Transcript Segment sang ngôn ngữ đích cụ thể. Thuộc tính: nội dung dịch, ngôn ngữ gốc, ngôn ngữ đích, trạng thái đã lưu. Quan hệ: một Transcript Segment có thể có nhiều Translations (mỗi ngôn ngữ đích một bản), nhưng chỉ được tạo khi có yêu cầu cho ngôn ngữ đó.
+- **Translation / Segment Translation (Bản dịch)**: Bản dịch của một Transcript Segment sang ngôn ngữ đích cụ thể. Trong implementation có thể được đặt tên là `SegmentTranslation`. Thuộc tính: nội dung dịch, ngôn ngữ gốc, ngôn ngữ đích, trạng thái đã lưu. Quan hệ: một Transcript Segment có thể có nhiều Translations (mỗi ngôn ngữ đích một bản), nhưng chỉ được tạo khi có yêu cầu cho ngôn ngữ đó.
 - **Summary (Tổng hợp)**: Bản tóm tắt nội dung cuộc họp. Thuộc tính: nội dung tóm tắt (điểm chính, quyết định, action items), thời điểm tạo. Thuộc về chính xác một Meeting.
 - **Audio Chunk (Đoạn âm thanh)**: Một phần audio thô được gửi từ browser lên server. Thuộc tính: dữ liệu audio, sequence number, trạng thái xử lý (chờ / đang xử lý / hoàn tất / lỗi). Thuộc về một Meeting.
-- **Notebook Session (Phiên Colab)**: Một Google Colab notebook session do user tự bật để làm GPU worker. Thuộc tính: trạng thái online/offline, thời điểm poll gần nhất, khả năng nhận job. Một Notebook Session có thể xử lý nhiều Audio Chunks theo thời gian.
+- **Notebook Session (Phiên Colab)**: Một Google Colab notebook session do user tự bật để làm GPU worker. Đây là operational entity; implementation có thể lưu trạng thái của notebook session trong Redis hoặc worker service state thay vì relational database. Thuộc tính: trạng thái online/offline, thời điểm poll gần nhất, khả năng nhận job. Một Notebook Session có thể xử lý nhiều Audio Chunks theo thời gian.
 - **Participant (Người tham gia)**: Một người đang xem transcript/translation trong phiên họp. Thuộc tính: session identifier, vai trò (host hoặc viewer), thời gian tham gia. Một Meeting có nhiều Participants.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
+- **Metric Note**: Trong feature này, `speech-to-screen latency` (từ lúc người dùng nói đến lúc text xuất hiện) và `worker-result-to-screen latency` (từ lúc server nhận transcript result từ worker đến lúc client hiển thị) là hai chỉ số khác nhau và đều phải được đo riêng.
 - **SC-001**: Host có thể bắt đầu ghi âm và thấy transcript đầu tiên xuất hiện trong vòng 15 giây sau khi nói câu đầu tiên.
-- **SC-002**: Transcript realtime hiển thị với độ trễ end-to-end tối đa 10 giây (từ lúc nói đến lúc text xuất hiện trên màn hình).
+- **SC-002**: Transcript realtime được phân phối từ server đến client trong vòng tối đa 500ms (p95) kể từ khi server nhận transcript result từ worker.
+- **SC-002a**: Transcript realtime hiển thị với độ trễ end-to-end tối đa 10 giây (p95) trong điều kiện hoạt động mục tiêu của MVP (từ lúc nói đến lúc text xuất hiện trên màn hình).
 - **SC-003**: Hệ thống hỗ trợ tối thiểu 10 participants đồng thời trong một phiên họp mà không giảm chất lượng trải nghiệm.
 - **SC-004**: Translation xuất hiện trong vòng 5 giây sau khi transcript segment tương ứng hiển thị.
 - **SC-005**: Summary cho cuộc họp 1 giờ được tạo trong vòng 60 giây.

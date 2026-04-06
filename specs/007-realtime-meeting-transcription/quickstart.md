@@ -1,14 +1,15 @@
 # Quickstart Guide: Realtime Meeting Transcription
 
 **Feature**: 007-realtime-meeting-transcription  
-**Date**: 2026-04-04
+**Date**: 2026-04-04  
+**Last Updated**: 2026-04-05
 
 ## Prerequisites
 
 - Node.js 20+ (frontend)
-- Python 3.11+ (backend)
+- Python 3.11+ with uv package manager (backend)
 - Docker & Docker Compose (services)
-- Google account (for Colab worker)
+- Google account (for Colab worker with GPU)
 
 ---
 
@@ -49,32 +50,34 @@ docker compose ps
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+# Create virtual environment with uv
+uv venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+# Install dependencies with uv
+uv pip install -r requirements.txt
+uv pip install -r requirements-dev.txt
 
 # Copy environment config
 cp .env.example .env
 
-# Edit .env with your settings
-# DATABASE_URL=postgresql://talkie:talkie123@localhost:5432/talkie
+# Edit .env with your settings (required values shown):
+# DATABASE_URL=postgresql+asyncpg://talkie:talkie123@localhost:5432/talkie
 # REDIS_URL=redis://localhost:6379
 # MINIO_ENDPOINT=localhost:9000
 # MINIO_ACCESS_KEY=minioadmin
 # MINIO_SECRET_KEY=minioadmin
 # JWT_SECRET=your-secret-key-change-in-production
+#
+# Optional (for translation and summary features):
 # GOOGLE_TRANSLATE_API_KEY=your-google-api-key
 # OPENAI_API_KEY=your-openai-api-key
 
 # Run database migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Start backend server (development)
-uvicorn src.main:app --reload --port 8000
+uv run uvicorn src.main:app --reload --port 8000
 ```
 
 **Verify backend:**
@@ -154,16 +157,19 @@ ngrok http 8000
 
 ```bash
 cd backend
-source venv/bin/activate
+source .venv/bin/activate
+
+# Run linting
+uv run ruff check .
 
 # Unit tests
-pytest tests/unit -v
+uv run pytest tests/unit -v
 
 # Integration tests (requires services)
-pytest tests/integration -v
+uv run pytest tests/integration -v
 
 # All tests with coverage
-pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-report=html
 ```
 
 ### Frontend Tests
@@ -286,21 +292,22 @@ talkie/
 
 ```bash
 # Backend
-uvicorn src.main:app --reload            # Start dev server
-alembic revision --autogenerate -m "..."  # Create migration
-alembic upgrade head                       # Apply migrations
-pytest -x -v                               # Run tests, stop on first failure
+uv run uvicorn src.main:app --reload     # Start dev server
+uv run alembic revision --autogenerate -m "..."  # Create migration
+uv run alembic upgrade head              # Apply migrations
+uv run ruff check .                      # Lint code
+uv run pytest -x -v                      # Run tests, stop on first failure
 
 # Frontend
-npm run dev                                # Start dev server
-npm run build                              # Production build
-npm run lint                               # Lint code
-npm run test                               # Run tests
+npm run dev                              # Start dev server
+npm run build                            # Production build
+npm run lint                             # Lint code
+npm run test                             # Run tests
 
 # Docker
-docker compose up -d                       # Start all services
-docker compose logs -f backend             # Tail backend logs
-docker compose down -v                     # Stop and remove volumes
+docker compose up -d                     # Start all services
+docker compose logs -f backend           # Tail backend logs
+docker compose down -v                   # Stop and remove volumes
 ```
 
 ---

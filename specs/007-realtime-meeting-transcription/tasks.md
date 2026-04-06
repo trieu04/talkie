@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/007-realtime-meeting-transcription/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
-**Tests**: Not explicitly requested in the specification. Tests are NOT included in this task list. Add test tasks if TDD approach is requested.
+**Tests**: Tests are mandatory per constitution. This task list includes unit, integration, E2E, accessibility, performance, and validation tasks required to verify each user story and quality gate.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -64,6 +64,11 @@
 - [x] T023 Implement POST /auth/register endpoint in backend/src/api/auth.py
 - [x] T024 Implement POST /auth/login endpoint in backend/src/api/auth.py
 - [x] T025 Implement POST /auth/refresh endpoint in backend/src/api/auth.py
+
+### Foundational Test Coverage
+
+- [ ] T025a Add auth endpoint integration tests in backend/tests/integration/test_auth_api.py
+- [ ] T025b Add JWT auth unit tests in backend/tests/unit/core/test_auth.py
 
 ### API & WebSocket Framework
 
@@ -156,6 +161,12 @@
 - [x] T075 [US1] Send sync_request after reconnection in frontend/src/hooks/useMeetingWebSocket.ts
 - [x] T076 [US1] Handle sync_response and merge missed segments in frontend/src/hooks/useMeetingWebSocket.ts
 
+### Testing - User Story 1
+
+- [ ] T076a [US1] Add MeetingService unit tests in backend/tests/unit/services/test_meeting_service.py
+- [ ] T076b [US1] Add meeting WebSocket integration tests in backend/tests/integration/test_meeting_websocket.py
+- [ ] T076c [US1] Add frontend MeetingRoom recording tests in frontend/tests/unit/pages/MeetingRoom.test.tsx
+
 **Checkpoint**: Host can record meetings and see realtime transcript (requires Worker from US6 to process audio)
 
 ---
@@ -170,26 +181,31 @@
 
 ### Backend - Worker API
 
-- [ ] T077 [US6] Create WorkerService for job assignment in backend/src/services/worker_service.py
-- [ ] T078 [US6] Implement GET /worker/jobs polling endpoint in backend/src/api/worker.py
-- [ ] T079 [US6] Implement job claiming with atomic lock in backend/src/services/worker_service.py
-- [ ] T080 [US6] Implement POST /worker/jobs/{id}/result endpoint in backend/src/api/worker.py
-- [ ] T081 [US6] Implement POST /worker/jobs/{id}/heartbeat endpoint in backend/src/api/worker.py
-- [ ] T082 [US6] Implement worker timeout and job reassignment logic in backend/src/services/worker_service.py
-- [ ] T083 [US6] Create background task for chunk timeout monitoring in backend/src/workers/chunk_monitor.py
+- [x] T077 [US6] Create WorkerService for job assignment in backend/src/services/worker_service.py
+- [x] T078 [US6] Implement GET /worker/jobs polling endpoint in backend/src/api/worker.py
+- [x] T079 [US6] Implement job claiming with atomic lock in backend/src/services/worker_service.py
+- [x] T080 [US6] Implement POST /worker/jobs/{id}/result endpoint in backend/src/api/worker.py
+- [x] T081 [US6] Implement POST /worker/jobs/{id}/heartbeat endpoint in backend/src/api/worker.py
+- [x] T082 [US6] Implement worker timeout and job reassignment logic in backend/src/services/worker_service.py
+- [x] T083 [US6] Create background task for chunk timeout monitoring in backend/src/workers/chunk_monitor.py
 
 ### Colab Worker - Core
 
-- [ ] T084 [P] [US6] Create worker configuration in colab-worker/worker/config.py
-- [ ] T085 [US6] Create server polling client in colab-worker/worker/client.py
-- [ ] T086 [US6] Implement job polling loop with backoff in colab-worker/worker/client.py
-- [ ] T087 [US6] Create Faster-Whisper model loader in colab-worker/worker/models/whisper_loader.py
-- [ ] T088 [US6] Implement STT processor with chunked inference in colab-worker/worker/processor.py
-- [ ] T089 [US6] Implement VAD (Silero) for silence detection in colab-worker/worker/processor.py
-- [ ] T090 [US6] Send heartbeat during processing in colab-worker/worker/client.py
-- [ ] T091 [US6] Submit transcript results to server in colab-worker/worker/client.py
-- [ ] T092 [US6] Create main worker entry point in colab-worker/worker/main.py
-- [ ] T093 [US6] Create Google Colab notebook with setup cells in colab-worker/notebook.ipynb
+- [x] T084 [P] [US6] Create worker configuration in colab-worker/worker/config.py
+- [x] T085 [US6] Create server polling client in colab-worker/worker/client.py
+- [x] T086 [US6] Implement job polling loop with backoff in colab-worker/worker/client.py
+- [x] T087 [US6] Create Faster-Whisper model loader in colab-worker/worker/models/whisper_loader.py
+- [x] T088 [US6] Implement STT processor with chunked inference in colab-worker/worker/processor.py
+- [x] T089 [US6] Implement VAD (Silero) for silence detection in colab-worker/worker/processor.py
+- [x] T090 [US6] Send heartbeat during processing in colab-worker/worker/client.py
+- [x] T091 [US6] Submit transcript results to server in colab-worker/worker/client.py
+- [x] T092 [US6] Create main worker entry point in colab-worker/worker/main.py
+- [x] T093 [US6] Create Google Colab notebook with setup cells in colab-worker/notebook.ipynb
+
+### Testing - User Story 6
+
+- [ ] T093a [US6] Add WorkerService claim/reassign unit tests in backend/tests/unit/services/test_worker_service.py
+- [ ] T093b [US6] Add colab worker polling/result flow tests in colab-worker/tests/test_worker_client.py
 
 **Checkpoint**: End-to-end transcript flow works: Host records → Server queues → Worker processes → Client displays
 
@@ -203,23 +219,28 @@
 
 ### Backend - Join Meeting
 
-- [ ] T094 [US2] Implement GET /join/{room_code} endpoint in backend/src/api/meetings.py
-- [ ] T095 [US2] Create participant WebSocket endpoint at /ws/meeting/{id}/participant in backend/src/api/websocket.py
-- [ ] T096 [US2] Track participant count in Redis in backend/src/services/meeting_service.py
-- [ ] T097 [US2] Broadcast participant_joined/left to all connections in backend/src/api/websocket.py
+- [x] T094 [US2] Implement GET /join/{room_code} endpoint in backend/src/api/meetings.py
+- [x] T095 [US2] Create participant WebSocket endpoint at /ws/meeting/{id}/participant in backend/src/api/websocket.py
+- [x] T096 [US2] Track participant count in Redis in backend/src/services/meeting_service.py
+- [x] T097 [US2] Broadcast participant_joined/left to all connections in backend/src/api/websocket.py
 
 ### Backend - Transcript Sync
 
-- [ ] T098 [US2] Handle sync_request from reconnecting participants in backend/src/api/websocket.py
-- [ ] T099 [US2] Return missed segments in sync_response in backend/src/services/transcript_service.py
+- [x] T098 [US2] Handle sync_request from reconnecting participants in backend/src/api/websocket.py
+- [x] T099 [US2] Return missed segments in sync_response in backend/src/services/transcript_service.py
 
 ### Frontend - Join Flow
 
-- [ ] T100 [US2] Create JoinMeeting page at /join/:roomCode in frontend/src/pages/JoinMeeting.tsx
-- [ ] T101 [US2] Connect to participant WebSocket endpoint in frontend/src/hooks/useMeetingWebSocket.ts
-- [ ] T102 [US2] Reuse TranscriptView component for participant view in frontend/src/pages/JoinMeeting.tsx
-- [ ] T103 [US2] Show participant count indicator in frontend/src/components/ParticipantCount.tsx
-- [ ] T104 [US2] Handle reconnection and sync for participants in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T100 [US2] Create JoinMeeting page at /join/:roomCode in frontend/src/pages/JoinMeeting.tsx
+- [x] T101 [US2] Connect to participant WebSocket endpoint in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T102 [US2] Reuse TranscriptView component for participant view in frontend/src/pages/JoinMeeting.tsx
+- [x] T103 [US2] Show participant count indicator in frontend/src/components/ParticipantCount.tsx
+- [x] T104 [US2] Handle reconnection and sync for participants in frontend/src/hooks/useMeetingWebSocket.ts
+
+### Testing - User Story 2
+
+- [ ] T104a [US2] Add participant join/reconnect integration tests in backend/tests/integration/test_participant_join.py
+- [ ] T104b [US2] Add frontend JoinMeeting transcript sync tests in frontend/tests/unit/pages/JoinMeeting.test.tsx
 
 **Checkpoint**: Multiple users can view same transcript in real-time
 
@@ -233,25 +254,30 @@
 
 ### Backend - Translation Service
 
-- [ ] T105 [US3] Create TranslationService with Google Cloud integration in backend/src/services/translation_service.py
-- [ ] T106 [US3] Implement on-demand translation for segments in backend/src/services/translation_service.py
-- [ ] T107 [US3] Cache translations in SegmentTranslation table in backend/src/services/translation_service.py
-- [ ] T108 [US3] Implement POST /meetings/{id}/translate endpoint in backend/src/api/meetings.py
+- [x] T105 [US3] Create TranslationService with Google Cloud integration in backend/src/services/translation_service.py
+- [x] T106 [US3] Implement on-demand translation for segments in backend/src/services/translation_service.py
+- [x] T107 [US3] Cache translations in SegmentTranslation table in backend/src/services/translation_service.py
+- [x] T108 [US3] Implement POST /meetings/{id}/translate endpoint in backend/src/api/meetings.py
 
 ### Backend - Translation WebSocket
 
-- [ ] T109 [US3] Handle set_language message from clients in backend/src/api/websocket.py
-- [ ] T110 [US3] Trigger backfill translation for existing segments in backend/src/services/translation_service.py
-- [ ] T111 [US3] Send translation_segment messages to subscribed clients in backend/src/api/websocket.py
-- [ ] T112 [US3] Send translation_backfill_complete when done in backend/src/api/websocket.py
+- [x] T109 [US3] Handle set_language message from clients in backend/src/api/websocket.py
+- [x] T110 [US3] Trigger backfill translation for existing segments in backend/src/services/translation_service.py
+- [x] T111 [US3] Send translation_segment messages to subscribed clients in backend/src/api/websocket.py
+- [x] T112 [US3] Send translation_backfill_complete when done in backend/src/api/websocket.py
 
 ### Frontend - Language Selection
 
-- [ ] T113 [US3] Create LanguageSelector component in frontend/src/components/LanguageSelector.tsx
-- [ ] T114 [US3] Send set_language message when language selected in frontend/src/hooks/useMeetingWebSocket.ts
-- [ ] T115 [US3] Handle translation_segment messages in store in frontend/src/stores/transcriptStore.ts
-- [ ] T116 [US3] Display translation alongside original in TranscriptView in frontend/src/components/TranscriptView.tsx
-- [ ] T117 [US3] Show translation loading indicator during backfill in frontend/src/components/TranscriptView.tsx
+- [x] T113 [US3] Create LanguageSelector component in frontend/src/components/LanguageSelector.tsx
+- [x] T114 [US3] Send set_language message when language selected in frontend/src/hooks/useMeetingWebSocket.ts
+- [x] T115 [US3] Handle translation_segment messages in store in frontend/src/stores/transcriptStore.ts
+- [x] T116 [US3] Display translation alongside original in TranscriptView in frontend/src/components/TranscriptView.tsx
+- [x] T117 [US3] Show translation loading indicator during backfill in frontend/src/components/TranscriptView.tsx
+
+### Testing - User Story 3
+
+- [ ] T117a [US3] Add TranslationService unit tests in backend/tests/unit/services/test_translation_service.py
+- [ ] T117b [US3] Add TranscriptView translation rendering tests in frontend/tests/unit/components/TranscriptView.test.tsx
 
 **Checkpoint**: Real-time translation working for Vietnamese → English/Japanese/etc
 
@@ -265,19 +291,24 @@
 
 ### Backend - Summary Service
 
-- [ ] T118 [US4] Create SummaryService with OpenAI integration in backend/src/services/summary_service.py
-- [ ] T119 [US4] Implement hierarchical summarization (chunk → merge) in backend/src/services/summary_service.py
-- [ ] T120 [US4] Extract key_points, decisions, action_items as JSON in backend/src/services/summary_service.py
-- [ ] T121 [US4] Implement POST /meetings/{id}/summary endpoint in backend/src/api/meetings.py
-- [ ] T122 [US4] Implement GET /meetings/{id}/summary endpoint in backend/src/api/meetings.py
-- [ ] T123 [US4] Support on-demand summary during meeting (partial transcript) in backend/src/services/summary_service.py
+- [x] T118 [US4] Create SummaryService with OpenAI integration in backend/src/services/summary_service.py
+- [x] T119 [US4] Implement hierarchical summarization (chunk → merge) in backend/src/services/summary_service.py
+- [x] T120 [US4] Extract key_points, decisions, action_items as JSON in backend/src/services/summary_service.py
+- [x] T121 [US4] Implement POST /meetings/{id}/summary endpoint in backend/src/api/meetings.py
+- [x] T122 [US4] Implement GET /meetings/{id}/summary endpoint in backend/src/api/meetings.py
+- [x] T123 [US4] Support on-demand summary during meeting (partial transcript) in backend/src/services/summary_service.py
 
 ### Frontend - Summary Display
 
-- [ ] T124 [US4] Create SummaryView component in frontend/src/components/SummaryView.tsx
-- [ ] T125 [US4] Create "Generate Summary" button in MeetingRoom in frontend/src/pages/MeetingRoom.tsx
-- [ ] T126 [US4] Show summary loading state (< 60s) in frontend/src/components/SummaryView.tsx
-- [ ] T127 [US4] Display key points, decisions, action items with formatting in frontend/src/components/SummaryView.tsx
+- [x] T124 [US4] Create SummaryView component in frontend/src/components/SummaryView.tsx
+- [x] T125 [US4] Create "Generate Summary" button in MeetingRoom in frontend/src/pages/MeetingRoom.tsx
+- [x] T126 [US4] Show summary loading state (< 60s) in frontend/src/components/SummaryView.tsx
+- [x] T127 [US4] Display key points, decisions, action items with formatting in frontend/src/components/SummaryView.tsx
+
+### Testing - User Story 4
+
+- [ ] T127a [US4] Add SummaryService unit tests in backend/tests/unit/services/test_summary_service.py
+- [ ] T127b [US4] Add SummaryView frontend tests in frontend/tests/unit/components/SummaryView.test.tsx
 
 **Checkpoint**: Meeting summary generation working
 
@@ -291,25 +322,33 @@
 
 ### Backend - History API
 
-- [ ] T128 [US5] Implement GET /meetings list endpoint with pagination in backend/src/api/meetings.py
-- [ ] T129 [US5] Implement GET /meetings/{id}/transcript with pagination in backend/src/api/meetings.py
-- [ ] T130 [US5] Implement GET /meetings/{id}/transcript/search endpoint in backend/src/api/meetings.py
-- [ ] T131 [US5] Create PostgreSQL full-text search on transcript_segments in backend/src/services/transcript_service.py
+- [x] T128 [US5] Implement GET /meetings list endpoint with pagination in backend/src/api/meetings.py
+- [x] T129 [US5] Implement GET /meetings/{id}/transcript with pagination in backend/src/api/meetings.py
+- [x] T130 [US5] Implement GET /meetings/{id}/transcript/search endpoint in backend/src/api/meetings.py
+- [x] T131 [US5] Create PostgreSQL full-text search on transcript_segments in backend/src/services/transcript_service.py
 
 ### Frontend - History Page
 
-- [ ] T132 [US5] Create History page listing past meetings in frontend/src/pages/History.tsx
-- [ ] T133 [US5] Show meeting metadata (title, date, duration, has_summary) in frontend/src/pages/History.tsx
-- [ ] T134 [US5] Create MeetingReplay page for viewing past meetings in frontend/src/pages/MeetingReplay.tsx
-- [ ] T135 [US5] Implement transcript pagination/infinite scroll in frontend/src/pages/MeetingReplay.tsx
-- [ ] T136 [US5] Implement search within transcript in frontend/src/components/TranscriptSearch.tsx
-- [ ] T137 [US5] Allow requesting translation for unseen languages in frontend/src/pages/MeetingReplay.tsx
-- [ ] T138 [US5] Allow generating summary for meetings without one in frontend/src/pages/MeetingReplay.tsx
+- [x] T132 [US5] Create History page listing past meetings in frontend/src/pages/History.tsx
+- [x] T133 [US5] Show meeting metadata (title, date, duration, has_summary) in frontend/src/pages/History.tsx
+- [x] T134 [US5] Create MeetingReplay page for viewing past meetings in frontend/src/pages/MeetingReplay.tsx
+- [x] T135 [US5] Implement transcript pagination/infinite scroll in frontend/src/pages/MeetingReplay.tsx
+- [x] T136 [US5] Implement search within transcript in frontend/src/components/TranscriptSearch.tsx
+- [x] T137 [US5] Allow requesting translation for unseen languages in frontend/src/pages/MeetingReplay.tsx
+- [x] T138 [US5] Allow generating summary for meetings without one in frontend/src/pages/MeetingReplay.tsx
 
 ### Participant Access to History
 
-- [ ] T139 [US5] Allow participant access to past meeting via room code in backend/src/api/meetings.py
-- [ ] T140 [US5] Create participant replay route at /join/:roomCode (past meeting) in frontend/src/pages/JoinMeeting.tsx
+- [ ] T139 [US5] Implement participant replay backend support for ended meetings in backend/src/api/meetings.py
+- [ ] T139a [US5] Implement ended-meeting room code lookup in backend/src/api/meetings.py
+- [ ] T139b [US5] Authorize anonymous replay access for valid ended meetings in backend/src/services/meeting_service.py
+- [ ] T139c [US5] Return replay transcript/translation/summary payload for participant access in backend/src/api/meetings.py
+- [ ] T139d [US5] Add participant replay integration tests in backend/tests/integration/test_participant_replay.py
+- [x] T140 [US5] Create participant replay route at /join/:roomCode (past meeting) in frontend/src/pages/JoinMeeting.tsx
+
+### Testing - User Story 5
+
+- [ ] T140a [US5] Add History and MeetingReplay frontend tests in frontend/tests/unit/pages/MeetingReplay.test.tsx
 
 **Checkpoint**: Full meeting history and replay functionality
 
@@ -326,24 +365,52 @@
 - [ ] T143 [P] Configure rate limiting per endpoint in backend/src/core/middleware.py
 - [ ] T144 [P] Optimize transcript_segments query with proper indexes in backend/alembic/versions/
 - [ ] T145 [P] Implement lazy loading for heavy components in frontend/src/App.tsx
+- [ ] T155 [P] Add load test for 10 concurrent participants receiving transcript events in backend/tests/performance/test_participant_fanout.py
+- [ ] T156 [P] Add soak test for 2+ hour meeting stability in backend/tests/performance/test_long_running_meeting.py
+- [ ] T157 [P] Measure replay page load time against SC-009 in frontend/tests/performance/replay-load.test.ts
+- [ ] T158 [P] Measure translation latency against SC-004 in backend/tests/performance/test_translation_latency.py
+- [ ] T159 [P] Measure summary generation time against SC-005 in backend/tests/performance/test_summary_latency.py
 
 ### Error Handling & UX
 
-- [ ] T146 [P] Add error boundaries in frontend/src/components/ErrorBoundary.tsx
-- [ ] T147 [P] Create toast notifications for errors/success in frontend/src/components/Notifications.tsx
-- [ ] T148 [P] Add loading skeletons for async content in frontend/src/components/Skeleton.tsx
+- [x] T146 [P] Add error boundaries in frontend/src/components/ErrorBoundary.tsx
+- [x] T147 [P] Create toast notifications for errors/success in frontend/src/components/Notifications.tsx
+- [x] T148 [P] Add loading skeletons for async content in frontend/src/components/Skeleton.tsx
 
 ### Accessibility
 
 - [ ] T149 [P] Add ARIA labels to all interactive elements in frontend/src/components/
 - [ ] T150 [P] Ensure keyboard navigation works in frontend/src/components/
 - [ ] T151 [P] Test color contrast meets WCAG 2.1 AA in frontend/src/theme/
+- [ ] T160 [P] Add screen reader announcements for recording, processing, and translation status in frontend/src/components/
+- [ ] T161 [P] Add accessibility tests for Login, MeetingRoom, JoinMeeting, History, and MeetingReplay in frontend/tests/accessibility/
 
 ### Documentation
 
-- [ ] T152 [P] Update quickstart.md with actual setup steps in specs/007-realtime-meeting-transcription/quickstart.md
+- [x] T152 [P] Update quickstart.md with actual setup steps in specs/007-realtime-meeting-transcription/quickstart.md
 - [ ] T153 [P] Create API documentation with OpenAPI in backend/docs/
 - [ ] T154 Run full validation per quickstart.md end-to-end flow
+- [ ] T162 [P] Document worker polling lifecycle and retry behavior in backend/docs/worker-architecture.md
+- [ ] T163 [P] Document replay access and security model in backend/docs/replay-access.md
+- [ ] T164 [P] Document translation caching and summary architecture decisions in backend/docs/architecture-decisions.md
+
+### Validation & Quality Gates
+
+- [ ] T165 Run backend lint and typing validation (ruff format/check, mypy) in backend/
+- [ ] T166 Run frontend lint, typecheck, and build validation in frontend/
+- [ ] T167 Run backend unit and integration test suites in backend/tests/
+- [ ] T168 Run frontend unit and accessibility test suites in frontend/tests/
+- [ ] T169 Run Playwright E2E for host -> participant -> replay happy path in frontend/tests/e2e/
+- [ ] T170 Verify business-logic branch coverage meets constitution threshold in backend/tests/
+- [ ] T171 Verify API docs and quickstart instructions match implemented behavior
+
+### Edge-Case Verification
+
+- [ ] T172 Verify no-worker-online queueing and waiting-state behavior in backend/tests/integration/test_no_worker_queueing.py
+- [ ] T173 Verify abrupt host disconnect marks meeting as abnormal end and preserves received data in backend/tests/integration/test_abnormal_meeting_end.py
+- [ ] T174 Verify reconnect within 30s preserves buffered audio and transcript sync in backend/tests/integration/test_reconnect_buffering.py
+- [ ] T175 Verify replay access after meeting end using shared link or room code in backend/tests/integration/test_replay_access.py
+- [ ] T176 Verify on-demand generation and caching for unseen replay translation languages in backend/tests/integration/test_replay_translation_generation.py
 
 ---
 
@@ -353,8 +420,8 @@
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
 - **Foundational (Phase 2)**: Depends on Setup - BLOCKS all user stories
-- **US1 (Phase 3)**: Depends on Foundational + US6 (for end-to-end)
-- **US6 (Phase 4)**: Depends on Foundational - Required for US1 to work end-to-end
+- **US1 (Phase 3)**: Depends on Foundational. UI/API implementation can proceed independently, but end-to-end MVP validation requires US6.
+- **US6 (Phase 4)**: Depends on Foundational and must reach polling/result readiness before US1 can be considered end-to-end complete.
 - **US2 (Phase 5)**: Depends on US1 (needs working transcript flow)
 - **US3 (Phase 6)**: Depends on US1 (needs transcript segments to translate)
 - **US4 (Phase 7)**: Depends on US1 (needs transcript to summarize)
@@ -400,7 +467,7 @@ Foundational (Phase 2)
 
 **After Foundational:**
 - US1 backend and frontend tasks can run in parallel within the story
-- US6 (Worker) can start in parallel with US1
+- US6 (Worker) can start in parallel with US1, but MVP validation must wait until both US1 and US6 are complete
 
 **After US1 + US6 complete:**
 - US2, US3, US4 can start in parallel (different features, different files)
@@ -449,15 +516,15 @@ Task: T050 "Host WebSocket endpoint"
 | Phase | Tasks |
 |-------|-------|
 | Phase 1: Setup | 9 |
-| Phase 2: Foundational | 31 |
-| Phase 3: US1 (Host Recording) | 36 |
-| Phase 4: US6 (Worker) | 17 |
-| Phase 5: US2 (Participant) | 11 |
-| Phase 6: US3 (Translation) | 13 |
-| Phase 7: US4 (Summary) | 10 |
-| Phase 8: US5 (History) | 13 |
-| Phase 9: Polish | 14 |
-| **Total** | **154** |
+| Phase 2: Foundational | 33 |
+| Phase 3: US1 (Host Recording) | 39 |
+| Phase 4: US6 (Worker) | 19 |
+| Phase 5: US2 (Participant) | 13 |
+| Phase 6: US3 (Translation) | 15 |
+| Phase 7: US4 (Summary) | 12 |
+| Phase 8: US5 (History) | 18 |
+| Phase 9: Polish | 36 |
+| **Total** | **194** |
 
 ---
 
