@@ -67,8 +67,8 @@
 
 ### Foundational Test Coverage
 
-- [ ] T025a Add auth endpoint integration tests in backend/tests/integration/test_auth_api.py
-- [ ] T025b Add JWT auth unit tests in backend/tests/unit/core/test_auth.py
+- [x] T025a Add auth endpoint integration tests in backend/tests/integration/test_auth_api.py
+- [x] T025b Add JWT auth unit tests in backend/tests/unit/core/test_auth.py
 
 ### API & WebSocket Framework
 
@@ -163,9 +163,9 @@
 
 ### Testing - User Story 1
 
-- [ ] T076a [US1] Add MeetingService unit tests in backend/tests/unit/services/test_meeting_service.py
-- [ ] T076b [US1] Add meeting WebSocket integration tests in backend/tests/integration/test_meeting_websocket.py
-- [ ] T076c [US1] Add frontend MeetingRoom recording tests in frontend/tests/unit/pages/MeetingRoom.test.tsx
+- [x] T076a [US1] Add MeetingService unit tests in backend/tests/unit/services/test_meeting_service.py
+- [x] T076b [US1] Add meeting WebSocket integration tests in backend/tests/integration/test_meeting_websocket.py
+- [x] T076c [US1] Add frontend MeetingRoom recording tests in frontend/tests/unit/pages/MeetingRoom.test.tsx
 
 **Checkpoint**: Host can record meetings and see realtime transcript (requires Worker from US6 to process audio)
 
@@ -204,8 +204,8 @@
 
 ### Testing - User Story 6
 
-- [ ] T093a [US6] Add WorkerService claim/reassign unit tests in backend/tests/unit/services/test_worker_service.py
-- [ ] T093b [US6] Add colab worker polling/result flow tests in colab-worker/tests/test_worker_client.py
+- [x] T093a [US6] Add WorkerService claim/reassign unit tests in backend/tests/unit/services/test_worker_service.py
+- [x] T093b [US6] Add colab worker polling/result flow tests in colab-worker/tests/test_worker_client.py
 
 **Checkpoint**: End-to-end transcript flow works: Host records → Server queues → Worker processes → Client displays
 
@@ -239,8 +239,8 @@
 
 ### Testing - User Story 2
 
-- [ ] T104a [US2] Add participant join/reconnect integration tests in backend/tests/integration/test_participant_join.py
-- [ ] T104b [US2] Add frontend JoinMeeting transcript sync tests in frontend/tests/unit/pages/JoinMeeting.test.tsx
+- [x] T104a [US2] Add participant join/reconnect integration tests in backend/tests/integration/test_participant_join.py
+- [x] T104b [US2] Add frontend JoinMeeting transcript sync tests in frontend/tests/unit/pages/JoinMeeting.test.tsx
 
 **Checkpoint**: Multiple users can view same transcript in real-time
 
@@ -276,8 +276,8 @@
 
 ### Testing - User Story 3
 
-- [ ] T117a [US3] Add TranslationService unit tests in backend/tests/unit/services/test_translation_service.py
-- [ ] T117b [US3] Add TranscriptView translation rendering tests in frontend/tests/unit/components/TranscriptView.test.tsx
+- [x] T117a [US3] Add TranslationService unit tests in backend/tests/unit/services/test_translation_service.py
+- [x] T117b [US3] Add TranscriptView translation rendering tests in frontend/tests/unit/components/TranscriptView.test.tsx
 
 **Checkpoint**: Real-time translation working for Vietnamese → English/Japanese/etc
 
@@ -307,8 +307,8 @@
 
 ### Testing - User Story 4
 
-- [ ] T127a [US4] Add SummaryService unit tests in backend/tests/unit/services/test_summary_service.py
-- [ ] T127b [US4] Add SummaryView frontend tests in frontend/tests/unit/components/SummaryView.test.tsx
+- [x] T127a [US4] Add SummaryService unit tests in backend/tests/unit/services/test_summary_service.py
+- [x] T127b [US4] Add SummaryView frontend tests in frontend/tests/unit/components/SummaryView.test.tsx
 
 **Checkpoint**: Meeting summary generation working
 
@@ -339,16 +339,16 @@
 
 ### Participant Access to History
 
-- [ ] T139 [US5] Implement participant replay backend support for ended meetings in backend/src/api/meetings.py
-- [ ] T139a [US5] Implement ended-meeting room code lookup in backend/src/api/meetings.py
-- [ ] T139b [US5] Authorize anonymous replay access for valid ended meetings in backend/src/services/meeting_service.py
-- [ ] T139c [US5] Return replay transcript/translation/summary payload for participant access in backend/src/api/meetings.py
-- [ ] T139d [US5] Add participant replay integration tests in backend/tests/integration/test_participant_replay.py
+- [x] T139 [US5] Implement participant replay backend support for ended meetings in backend/src/api/meetings.py
+- [x] T139a [US5] Implement ended-meeting room code lookup in backend/src/api/meetings.py
+- [x] T139b [US5] Authorize anonymous replay access for valid ended meetings in backend/src/services/meeting_service.py
+- [x] T139c [US5] Return replay transcript/translation/summary payload for participant access in backend/src/api/meetings.py
+- [x] T139d [US5] Add participant replay integration tests in backend/tests/integration/test_participant_replay.py
 - [x] T140 [US5] Create participant replay route at /join/:roomCode (past meeting) in frontend/src/pages/JoinMeeting.tsx
 
 ### Testing - User Story 5
 
-- [ ] T140a [US5] Add History and MeetingReplay frontend tests in frontend/tests/unit/pages/MeetingReplay.test.tsx
+- [x] T140a [US5] Add History and MeetingReplay frontend tests in frontend/tests/unit/pages/MeetingReplay.test.tsx
 
 **Checkpoint**: Full meeting history and replay functionality
 
@@ -360,16 +360,16 @@
 
 ### Performance & Reliability
 
-- [ ] T141 [P] Implement WebSocket connection pooling in backend/src/core/websocket_manager.py
-- [ ] T142 [P] Add request logging middleware in backend/src/main.py
-- [ ] T143 [P] Configure rate limiting per endpoint in backend/src/core/middleware.py
-- [ ] T144 [P] Optimize transcript_segments query with proper indexes in backend/alembic/versions/
-- [ ] T145 [P] Implement lazy loading for heavy components in frontend/src/App.tsx
-- [ ] T155 [P] Add load test for 10 concurrent participants receiving transcript events in backend/tests/performance/test_participant_fanout.py
-- [ ] T156 [P] Add soak test for 2+ hour meeting stability in backend/tests/performance/test_long_running_meeting.py
-- [ ] T157 [P] Measure replay page load time against SC-009 in frontend/tests/performance/replay-load.test.ts
-- [ ] T158 [P] Measure translation latency against SC-004 in backend/tests/performance/test_translation_latency.py
-- [ ] T159 [P] Measure summary generation time against SC-005 in backend/tests/performance/test_summary_latency.py
+- [x] T141 [P] Implement WebSocket connection pooling in backend/src/core/websocket_manager.py
+- [x] T142 [P] Add request logging middleware in backend/src/main.py
+- [x] T143 [P] Configure rate limiting per endpoint in backend/src/core/middleware.py
+- [x] T144 [P] Optimize transcript_segments query with proper indexes in backend/alembic/versions/
+- [x] T145 [P] Implement lazy loading for heavy components in frontend/src/App.tsx
+- [x] T155 [P] Add load test for 10 concurrent participants receiving transcript events in backend/tests/performance/test_participant_fanout.py
+- [x] T156 [P] Add soak test for 2+ hour meeting stability in backend/tests/performance/test_long_running_meeting.py
+- [x] T157 [P] Measure replay page load time against SC-009 in frontend/tests/performance/replay-load.test.ts
+- [x] T158 [P] Measure translation latency against SC-004 in backend/tests/performance/test_translation_latency.py
+- [x] T159 [P] Measure summary generation time against SC-005 in backend/tests/performance/test_summary_latency.py
 
 ### Error Handling & UX
 
@@ -379,38 +379,38 @@
 
 ### Accessibility
 
-- [ ] T149 [P] Add ARIA labels to all interactive elements in frontend/src/components/
-- [ ] T150 [P] Ensure keyboard navigation works in frontend/src/components/
-- [ ] T151 [P] Test color contrast meets WCAG 2.1 AA in frontend/src/theme/
-- [ ] T160 [P] Add screen reader announcements for recording, processing, and translation status in frontend/src/components/
-- [ ] T161 [P] Add accessibility tests for Login, MeetingRoom, JoinMeeting, History, and MeetingReplay in frontend/tests/accessibility/
+- [x] T149 [P] Add ARIA labels to all interactive elements in frontend/src/components/
+- [x] T150 [P] Ensure keyboard navigation works in frontend/src/components/
+- [x] T151 [P] Test color contrast meets WCAG 2.1 AA in frontend/src/theme/
+- [x] T160 [P] Add screen reader announcements for recording, processing, and translation status in frontend/src/components/
+- [x] T161 [P] Add accessibility tests for Login, MeetingRoom, JoinMeeting, History, and MeetingReplay in frontend/tests/accessibility/
 
 ### Documentation
 
 - [x] T152 [P] Update quickstart.md with actual setup steps in specs/007-realtime-meeting-transcription/quickstart.md
-- [ ] T153 [P] Create API documentation with OpenAPI in backend/docs/
-- [ ] T154 Run full validation per quickstart.md end-to-end flow
-- [ ] T162 [P] Document worker polling lifecycle and retry behavior in backend/docs/worker-architecture.md
-- [ ] T163 [P] Document replay access and security model in backend/docs/replay-access.md
-- [ ] T164 [P] Document translation caching and summary architecture decisions in backend/docs/architecture-decisions.md
+- [x] T153 [P] Create API documentation with OpenAPI in backend/docs/
+- [x] T154 Run full validation per quickstart.md end-to-end flow
+- [x] T162 [P] Document worker polling lifecycle and retry behavior in backend/docs/worker-architecture.md
+- [x] T163 [P] Document replay access and security model in backend/docs/replay-access.md
+- [x] T164 [P] Document translation caching and summary architecture decisions in backend/docs/architecture-decisions.md
 
 ### Validation & Quality Gates
 
-- [ ] T165 Run backend lint and typing validation (ruff format/check, mypy) in backend/
-- [ ] T166 Run frontend lint, typecheck, and build validation in frontend/
-- [ ] T167 Run backend unit and integration test suites in backend/tests/
-- [ ] T168 Run frontend unit and accessibility test suites in frontend/tests/
-- [ ] T169 Run Playwright E2E for host -> participant -> replay happy path in frontend/tests/e2e/
-- [ ] T170 Verify business-logic branch coverage meets constitution threshold in backend/tests/
-- [ ] T171 Verify API docs and quickstart instructions match implemented behavior
+- [x] T165 Run backend lint and typing validation (ruff format/check, mypy) in backend/
+- [x] T166 Run frontend lint, typecheck, and build validation in frontend/
+- [x] T167 Run backend unit and integration test suites in backend/tests/
+- [x] T168 Run frontend unit and accessibility test suites in frontend/tests/
+- [x] T169 Run Playwright E2E for host -> participant -> replay happy path in frontend/tests/e2e/
+- [x] T170 Verify business-logic branch coverage meets constitution threshold in backend/tests/
+- [x] T171 Verify API docs and quickstart instructions match implemented behavior
 
 ### Edge-Case Verification
 
-- [ ] T172 Verify no-worker-online queueing and waiting-state behavior in backend/tests/integration/test_no_worker_queueing.py
-- [ ] T173 Verify abrupt host disconnect marks meeting as abnormal end and preserves received data in backend/tests/integration/test_abnormal_meeting_end.py
-- [ ] T174 Verify reconnect within 30s preserves buffered audio and transcript sync in backend/tests/integration/test_reconnect_buffering.py
-- [ ] T175 Verify replay access after meeting end using shared link or room code in backend/tests/integration/test_replay_access.py
-- [ ] T176 Verify on-demand generation and caching for unseen replay translation languages in backend/tests/integration/test_replay_translation_generation.py
+- [x] T172 Verify no-worker-online queueing and waiting-state behavior in backend/tests/integration/test_no_worker_queueing.py
+- [x] T173 Verify abrupt host disconnect marks meeting as abnormal end and preserves received data in backend/tests/integration/test_abnormal_meeting_end.py
+- [x] T174 Verify reconnect within 30s preserves buffered audio and transcript sync in backend/tests/integration/test_reconnect_buffering.py
+- [x] T175 Verify replay access after meeting end using shared link or room code in backend/tests/integration/test_replay_access.py
+- [x] T176 Verify on-demand generation and caching for unseen replay translation languages in backend/tests/integration/test_replay_translation_generation.py
 
 ---
 

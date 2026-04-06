@@ -39,9 +39,9 @@ docker compose ps
 **Services:**
 | Service | Port | Credentials |
 |---------|------|-------------|
-| PostgreSQL | 5432 | talkie / talkie123 |
-| Redis | 6379 | (no auth) |
-| MinIO | 9000 (API), 9001 (Console) | minioadmin / minioadmin |
+| PostgreSQL | 6201 | talkie / talkie123 |
+| Redis | 6202 | (no auth) |
+| MinIO | 6203 (API), 6204 (Console) | minioadmin / minioadmin |
 
 ---
 
@@ -62,9 +62,9 @@ uv pip install -r requirements-dev.txt
 cp .env.example .env
 
 # Edit .env with your settings (required values shown):
-# DATABASE_URL=postgresql+asyncpg://talkie:talkie123@localhost:5432/talkie
-# REDIS_URL=redis://localhost:6379
-# MINIO_ENDPOINT=localhost:9000
+# DATABASE_URL=postgresql+asyncpg://talkie:talkie123@localhost:6201/talkie
+# REDIS_URL=redis://localhost:6202
+# MINIO_ENDPOINT=localhost:6203
 # MINIO_ACCESS_KEY=minioadmin
 # MINIO_SECRET_KEY=minioadmin
 # JWT_SECRET=your-secret-key-change-in-production
@@ -77,12 +77,12 @@ cp .env.example .env
 uv run alembic upgrade head
 
 # Start backend server (development)
-uv run uvicorn src.main:app --reload --port 8000
+uv run uvicorn src.main:app --reload --port 8001
 ```
 
 **Verify backend:**
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 # {"status": "healthy", "version": "0.1.0"}
 ```
 
@@ -100,8 +100,8 @@ npm install
 cp .env.example .env.local
 
 # Edit .env.local
-# VITE_API_URL=http://localhost:8000
-# VITE_WS_URL=ws://localhost:8000
+# VITE_API_URL=http://localhost:8001/api/v1
+# VITE_WS_URL=ws://localhost:8001/ws
 
 # Start development server
 npm run dev
@@ -128,7 +128,7 @@ pip install -r requirements-cpu.txt
 
 # Start worker
 python -m worker.main \
-  --server-url http://localhost:8000 \
+  --server-url http://localhost:8001 \
   --worker-id local-dev-1
 ```
 
@@ -143,7 +143,7 @@ python -m worker.main \
 **Ngrok for local development:**
 ```bash
 # In a new terminal
-ngrok http 8000
+ngrok http 8001
 
 # Use the ngrok URL in Colab notebook
 # e.g., https://abc123.ngrok.io
@@ -178,10 +178,10 @@ uv run pytest --cov=src --cov-report=html
 cd frontend
 
 # Unit tests
-npm run test
+npm run test -- --run
 
-# E2E tests (requires backend running)
-npm run test:e2e
+# E2E tests (requires frontend server running)
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:4173 npm run test:e2e
 ```
 
 ---
@@ -192,17 +192,17 @@ npm run test:e2e
 
 ```bash
 # 1. Register host account
-curl -X POST http://localhost:8000/api/v1/auth/register \
+curl -X POST http://localhost:8001/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Test1234","display_name":"Test Host"}'
 
 # 2. Login
-TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:8001/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Test1234"}' | jq -r '.access_token')
 
 # 3. Create meeting
-curl -X POST http://localhost:8000/api/v1/meetings \
+curl -X POST http://localhost:8001/api/v1/meetings \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Test Meeting","source_language":"vi"}'
@@ -210,14 +210,13 @@ curl -X POST http://localhost:8000/api/v1/meetings \
 
 ### Full E2E Test
 
-1. Open frontend at http://localhost:5173
+1. Start frontend (dev or preview) and open it in a browser
 2. Register/login as host
-3. Create new meeting
-4. Allow microphone access
-5. Start recording
-6. Open participant link in incognito window
-7. Speak into microphone
-8. Verify transcript appears in both windows
+3. Create a new meeting
+4. Open participant link in a separate browser context
+5. Verify realtime transcript reaches both host and participant views
+6. End the meeting and open replay view
+7. Verify replay transcript and summary render correctly
 
 ---
 

@@ -87,6 +87,12 @@ Refresh access token.
 
 ## Meetings
 
+FastAPI also exposes generated OpenAPI documentation at:
+
+- `/docs` - Swagger UI
+- `/redoc` - ReDoc
+- `/openapi.json` - raw schema
+
 ### POST /meetings
 Create a new meeting. **Requires auth.**
 
@@ -196,6 +202,35 @@ Upload audio chunk during recording. **Requires auth (owner only).**
   "storage_key": "meetings/{id}/chunks/1.webm"
 }
 ```
+
+---
+
+## Public Replay (Ended Meetings Only)
+
+These routes are available for participants who only have a room code. They return replay data
+only when the meeting has already ended.
+
+### GET /meetings/join/{room_code}/transcript
+
+Fetch paginated replay transcript data for an ended meeting.
+
+### GET /meetings/join/{room_code}/transcript/search
+
+Search replay transcript content (source text or cached translations) for an ended meeting.
+
+### GET /meetings/join/{room_code}/summary
+
+Fetch an existing summary for an ended meeting.
+
+### POST /meetings/join/{room_code}/summary
+
+Generate or reuse a summary for an ended meeting.
+
+### POST /meetings/join/{room_code}/translate
+
+Generate or reuse cached translations for an ended meeting.
+
+Equivalent root-level `/join/{room_code}/...` paths are also available for non-versioned public use.
 
 ---
 
