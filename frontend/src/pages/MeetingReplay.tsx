@@ -28,6 +28,22 @@ import type { MeetingSummary, MeetingStatus, TranscriptSegment, TranslationMap }
 
 const TRANSCRIPT_PAGE_SIZE = 100;
 
+const mergeTranslations = (segments: TranscriptSegment[]): TranslationMap => {
+  return segments.reduce<TranslationMap>((accumulator, segment) => {
+    if (!segment.translations?.length) {
+      return accumulator;
+    }
+
+    accumulator[segment.id] = {
+      ...(accumulator[segment.id] ?? {}),
+      ...Object.fromEntries(
+        segment.translations.map((translation) => [translation.target_language, translation.translated_text]),
+      ),
+    };
+    return accumulator;
+  }, {});
+};
+
 const STATUS_COLORS: Record<MeetingStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
   created: 'default',
   recording: 'success',
@@ -121,6 +137,7 @@ export default function MeetingReplay() {
         const response = await meetingApi.getTranscript(meetingId, {
           limit: TRANSCRIPT_PAGE_SIZE,
           offset,
+          ...(selectedLanguage ? { include_translations: selectedLanguage } : {}),
         });
 
         setSegments((prev) => {
@@ -129,6 +146,7 @@ export default function MeetingReplay() {
           );
           return [...prev, ...newSegments].sort((a, b) => a.sequence - b.sequence);
         });
+        setTranslations((prev) => ({ ...prev, ...mergeTranslations(response.segments) }));
         setTranscriptTotal(response.total);
         setHasMoreSegments(offset + response.segments.length < response.total);
       } catch (_error) {
@@ -137,7 +155,7 @@ export default function MeetingReplay() {
         setIsLoadingTranscript(false);
       }
     },
-    [meetingId],
+    [meetingId, selectedLanguage],
   );
 
   useEffect(() => {
@@ -272,6 +290,7 @@ export default function MeetingReplay() {
         component={RouterLink}
         to="/history"
         startIcon={<ArrowBackRoundedIcon />}
+        aria-label={t('replay.backToHistory')}
         sx={{ alignSelf: 'flex-start' }}
       >
         {t('replay.backToHistory')}
@@ -279,6 +298,9 @@ export default function MeetingReplay() {
 
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
+          <Typography role="status" aria-live="polite" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+            {isRequestingTranslation ? t('translation.translating') : isGeneratingSummary ? t('summary.generating') : ''}
+          </Typography>
           <Stack
             direction="row"
             spacing={2}
@@ -377,6 +399,7 @@ export default function MeetingReplay() {
                 variant="outlined"
                 onClick={handleLoadMore}
                 disabled={isLoadingTranscript}
+                aria-label={t('replay.loadMore')}
                 startIcon={isLoadingTranscript ? <CircularProgress size={18} /> : undefined}
               >
                 {isLoadingTranscript ? t('common.loading') : t('replay.loadMore')}
@@ -410,6 +433,7 @@ export default function MeetingReplay() {
               <Button
                 variant="contained"
                 onClick={handleGenerateSummary}
+                aria-label={t('replay.generateSummary')}
                 startIcon={<AutoAwesomeRoundedIcon />}
                 disabled={segments.length === 0}
               >

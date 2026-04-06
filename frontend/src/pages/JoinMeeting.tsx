@@ -29,6 +29,22 @@ type JoinStatus = 'loading' | 'active' | 'ended' | 'error';
 
 const TRANSCRIPT_PAGE_SIZE = 100;
 
+const mergeTranslations = (segments: TranscriptSegment[]): TranslationMap => {
+  return segments.reduce<TranslationMap>((accumulator, segment) => {
+    if (!segment.translations?.length) {
+      return accumulator;
+    }
+
+    accumulator[segment.id] = {
+      ...(accumulator[segment.id] ?? {}),
+      ...Object.fromEntries(
+        segment.translations.map((translation) => [translation.target_language, translation.translated_text]),
+      ),
+    };
+    return accumulator;
+  }, {});
+};
+
 const getStatusColor = (
   status: string,
 ): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
@@ -138,9 +154,10 @@ export default function JoinMeeting() {
       setIsLoadingTranscript(true);
 
       try {
-        const response = await meetingApi.getTranscript(meetingInfo.meeting_id, {
+        const response = await meetingApi.getPublicTranscript(roomCode ?? '', {
           limit: TRANSCRIPT_PAGE_SIZE,
           offset,
+          ...(selectedLanguage ? { include_translations: selectedLanguage } : {}),
         });
 
         setReplaySegments((prev) => {
@@ -149,6 +166,7 @@ export default function JoinMeeting() {
           );
           return [...prev, ...newSegments].sort((a, b) => a.sequence - b.sequence);
         });
+        setReplayTranslations((prev) => ({ ...prev, ...mergeTranslations(response.segments) }));
         setTranscriptTotal(response.total);
         setHasMoreSegments(offset + response.segments.length < response.total);
       } catch (_error) {
@@ -157,7 +175,7 @@ export default function JoinMeeting() {
         setIsLoadingTranscript(false);
       }
     },
-    [meetingInfo?.meeting_id],
+    [roomCode, selectedLanguage],
   );
 
   useEffect(() => {
@@ -180,7 +198,7 @@ export default function JoinMeeting() {
       setSummaryError(null);
 
       try {
-        const data = await meetingApi.getSummary(meetingInfo.meeting_id);
+        const data = await meetingApi.getPublicSummary(roomCode ?? '');
         setSummary(data);
       } catch (_error) {
         // Silently fail - summary loading is non-critical for UX
@@ -190,7 +208,7 @@ export default function JoinMeeting() {
     };
 
     void fetchSummary();
-  }, [joinStatus, meetingInfo?.meeting_id, meetingInfo?.has_summary]);
+  }, [joinStatus, meetingInfo?.meeting_id, meetingInfo?.has_summary, roomCode]);
 
   const handleLoadMore = useCallback(() => {
     if (isLoadingTranscript || !hasMoreSegments) {
@@ -227,7 +245,7 @@ export default function JoinMeeting() {
       setIsRequestingTranslation(true);
 
       try {
-        await meetingApi.requestTranslation(meetingInfo.meeting_id, languageCode);
+        await meetingApi.requestPublicTranslation(roomCode ?? '', languageCode);
         setMeetingInfo((prev) =>
           prev
             ? {
@@ -242,7 +260,7 @@ export default function JoinMeeting() {
         setIsRequestingTranslation(false);
       }
     },
-    [meetingInfo, t],
+    [meetingInfo, roomCode, t],
   );
 
   const handleGenerateSummary = useCallback(async () => {
@@ -254,7 +272,7 @@ export default function JoinMeeting() {
     setSummaryError(null);
 
     try {
-      const response = await meetingApi.generateSummary(meetingInfo.meeting_id);
+      const response = await meetingApi.generatePublicSummary(roomCode ?? '');
       if (response.status === 'completed' && response.summary) {
         setSummary(response.summary);
         setMeetingInfo((prev) => (prev ? { ...prev, has_summary: true } : prev));
@@ -264,7 +282,7 @@ export default function JoinMeeting() {
     } finally {
       setIsGeneratingSummary(false);
     }
-  }, [meetingInfo?.meeting_id, t]);
+  }, [roomCode, meetingInfo?.meeting_id, t]);
 
   const getConnectionStatusLabel = useCallback(() => {
     switch (connectionState) {
@@ -322,6 +340,9 @@ export default function JoinMeeting() {
       <Stack spacing={3}>
         <Paper sx={{ p: 3 }}>
           <Stack spacing={2}>
+            <Typography role="status" aria-live="polite" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+              {isRequestingTranslation ? t('translation.translating') : isGeneratingSummary ? t('summary.generating') : ''}
+            </Typography>
             <Stack
               direction="row"
               spacing={2}
@@ -383,7 +404,7 @@ export default function JoinMeeting() {
 
             {meetingInfo.meeting_id && (
               <TranscriptSearch
-                meetingId={meetingInfo.meeting_id}
+                roomCode={roomCode ?? ''}
                 onResultClick={handleSearchResultClick}
               />
             )}
@@ -402,6 +423,7 @@ export default function JoinMeeting() {
                   variant="outlined"
                   onClick={handleLoadMore}
                   disabled={isLoadingTranscript}
+                  aria-label={t('replay.loadMore')}
                   startIcon={isLoadingTranscript ? <CircularProgress size={18} /> : undefined}
                 >
                   {isLoadingTranscript ? t('common.loading') : t('replay.loadMore')}
@@ -435,6 +457,7 @@ export default function JoinMeeting() {
                 <Button
                   variant="contained"
                   onClick={handleGenerateSummary}
+                  aria-label={t('replay.generateSummary')}
                   startIcon={<AutoAwesomeRoundedIcon />}
                   disabled={replaySegments.length === 0}
                 >
