@@ -13,6 +13,7 @@ export default function ParticipantCount({ count, size = 'small' }: ParticipantC
       icon={<GroupRoundedIcon />}
       label={count}
       variant="outlined"
+      aria-label={`Participant count: ${count}`}
     />
   );
 }

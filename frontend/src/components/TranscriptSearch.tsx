@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { meetingApi, type TranscriptSearchResult } from '@/services/meetingApi';
 
 interface TranscriptSearchProps {
-  meetingId: string;
+  meetingId?: string;
+  roomCode?: string;
   onResultClick: (segmentId: string) => void;
 }
 
@@ -73,7 +74,7 @@ function HighlightedText({
   return <>{parts}</>;
 }
 
-export default function TranscriptSearch({ meetingId, onResultClick }: TranscriptSearchProps) {
+export default function TranscriptSearch({ meetingId, roomCode, onResultClick }: TranscriptSearchProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TranscriptSearchResult[]>([]);
@@ -93,7 +94,11 @@ export default function TranscriptSearch({ meetingId, onResultClick }: Transcrip
       setHasSearched(true);
 
       try {
-        const response = await meetingApi.searchTranscript(meetingId, searchQuery.trim());
+        const response = roomCode
+          ? await meetingApi.searchPublicTranscript(roomCode, searchQuery.trim())
+          : meetingId
+            ? await meetingApi.searchTranscript(meetingId, searchQuery.trim())
+            : { results: [], total: 0, query: searchQuery.trim() };
         setResults(response.results);
       } catch {
         setResults([]);
@@ -101,7 +106,7 @@ export default function TranscriptSearch({ meetingId, onResultClick }: Transcrip
         setIsSearching(false);
       }
     },
-    [meetingId],
+    [meetingId, roomCode],
   );
 
   const handleQueryChange = useCallback(

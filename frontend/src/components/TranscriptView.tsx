@@ -61,6 +61,7 @@ const SegmentItem = memo(function SegmentItem({
     <Fade in timeout={300}>
       <Paper
         component="article"
+        id={`segment-${segment.id}`}
         elevation={0}
         sx={{
           p: 2,

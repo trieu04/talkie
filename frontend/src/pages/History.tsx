@@ -49,7 +49,7 @@ function MeetingCard({ meeting }: MeetingCardProps) {
 
   return (
     <Card variant="outlined">
-      <CardActionArea component={RouterLink} to={linkTo}>
+      <CardActionArea component={RouterLink} to={linkTo} aria-label={meeting.title ?? t('meeting.untitled')}>
         <CardContent>
           <Stack spacing={1.5}>
             <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2}>

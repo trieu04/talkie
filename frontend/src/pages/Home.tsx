@@ -150,6 +150,7 @@ export default function Home() {
                 variant="contained"
                 size="large"
                 disabled={isCreating}
+                aria-label={t('home.createMeeting')}
                 startIcon={isCreating ? <CircularProgress size={20} color="inherit" /> : <AddRoundedIcon />}
               >
                 {t('home.createMeeting')}
@@ -185,6 +186,7 @@ export default function Home() {
                       <CardActionArea
                         component={RouterLink}
                         to={`/meeting/${meeting.id}`}
+                        aria-label={meeting.title || `Meeting ${meeting.room_code}`}
                         sx={{ p: 0 }}
                       >
                         <CardContent sx={{ py: 2 }}>
