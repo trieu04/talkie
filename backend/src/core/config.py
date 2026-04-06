@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
     log_level: str = "INFO"
+    allow_startup_without_infra: bool = Field(default=False, alias="ALLOW_STARTUP_WITHOUT_INFRA")
 
     database_url: str = Field(alias="DATABASE_URL")
     redis_url: str = Field(alias="REDIS_URL")
@@ -40,6 +41,13 @@ class Settings(BaseSettings):
 
     worker_timeout_seconds: int = Field(default=30, alias="WORKER_TIMEOUT_SECONDS")
     worker_max_retries: int = Field(default=3, alias="WORKER_MAX_RETRIES")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+
+    google_translate_api_key: str | None = Field(default=None, alias="GOOGLE_TRANSLATE_API_KEY")
+    google_translate_project_id: str | None = Field(
+        default=None,
+        alias="GOOGLE_TRANSLATE_PROJECT_ID",
+    )
 
     cors_origins: list[str] = Field(
         default_factory=lambda: [

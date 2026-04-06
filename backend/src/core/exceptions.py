@@ -49,6 +49,17 @@ async def app_error_handler(_: Request, exc: Exception) -> JSONResponse:
     )
 
 
+def _sanitize_errors(errors: list[dict]) -> list[dict]:
+    sanitized = []
+    for err in errors:
+        clean = {k: v for k, v in err.items() if k != "ctx"}
+        ctx = err.get("ctx")
+        if ctx:
+            clean["ctx"] = {k: str(v) for k, v in ctx.items()}
+        sanitized.append(clean)
+    return sanitized
+
+
 async def validation_error_handler(_: Request, exc: Exception) -> JSONResponse:
     validation_error = (
         exc if isinstance(exc, RequestValidationError) else RequestValidationError([])
@@ -59,7 +70,7 @@ async def validation_error_handler(_: Request, exc: Exception) -> JSONResponse:
             "error": {
                 "code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
-                "details": validation_error.errors(),
+                "details": _sanitize_errors(validation_error.errors()),
             }
         },
     )

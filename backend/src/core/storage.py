@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from io import BytesIO
 from typing import Final
 
@@ -58,6 +59,24 @@ class MinIOStorage:
             finally:
                 response.close()
                 response.release_conn()
+        except S3Error as exc:
+            raise StorageError(str(exc)) from exc
+
+    async def get_presigned_url(
+        self,
+        object_name: str,
+        expires: timedelta | None = None,
+    ) -> str:
+        import asyncio
+
+        url_expires = expires or timedelta(minutes=5)
+        try:
+            return await asyncio.to_thread(
+                self._client.presigned_get_object,
+                self.bucket_name,
+                object_name,
+                expires=url_expires,
+            )
         except S3Error as exc:
             raise StorageError(str(exc)) from exc
 

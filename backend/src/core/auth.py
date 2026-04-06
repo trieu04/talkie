@@ -4,13 +4,12 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import TypedDict
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from src.core.config import settings
 
 PASSWORD_PATTERN = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class TokenError(ValueError):
@@ -30,12 +29,18 @@ class TokenPair(TypedDict):
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return pwd_context.verify(plain_password, password_hash)
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        password_hash.encode("utf-8"),
+    )
 
 
 def hash_password(password: str) -> str:
     validate_password_strength(password)
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
 
 
 def validate_password_strength(password: str) -> None:
