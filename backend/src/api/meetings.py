@@ -88,8 +88,11 @@ def _websocket_base_url() -> str:
 
 def _meeting_response(
     meeting: Meeting,
+    *,
+    duration_seconds: int | None = None,
     has_transcript: bool = False,
     has_summary: bool = False,
+    available_translations: list[str] | None = None,
 ) -> MeetingResponse:
     return MeetingResponse(
         id=meeting.id,
@@ -101,18 +104,31 @@ def _meeting_response(
         started_at=meeting.started_at,
         ended_at=meeting.ended_at,
         join_url=f"{_base_url()}/join/{meeting.room_code}",
+        duration_seconds=duration_seconds,
         has_transcript=has_transcript,
         has_summary=has_summary,
+        available_translations=available_translations or [],
     )
 
 
-def _join_meeting_response(meeting: Meeting) -> JoinMeetingResponse:
+def _join_meeting_response(
+    meeting: Meeting,
+    *,
+    duration_seconds: int | None = None,
+    has_transcript: bool = False,
+    has_summary: bool = False,
+    available_translations: list[str] | None = None,
+) -> JoinMeetingResponse:
     return JoinMeetingResponse(
         meeting_id=meeting.id,
         title=meeting.title,
         source_language=meeting.source_language,
         status=meeting.status.value,
         started_at=meeting.started_at,
+        duration_seconds=duration_seconds,
+        has_transcript=has_transcript,
+        has_summary=has_summary,
+        available_translations=available_translations or [],
         websocket_url=(
             f"{_websocket_base_url()}/ws/meeting/{meeting.id}/participant?room_code={meeting.room_code}"
         ),
@@ -137,10 +153,56 @@ async def _get_owned_meeting(
     return meeting
 
 
+async def _get_replay_meeting_by_room_code(room_code: str, db: DBSession) -> Meeting:
+    meeting = await MeetingService(db).get_replay_meeting_by_room_code(room_code)
+    if meeting is None:
+        raise NotFoundError("Replay meeting not found")
+    return meeting
+
+
 def _parse_translation_languages(value: str | None) -> set[str] | None:
     if value is None:
         return None
     return {item.strip().lower() for item in value.split(",") if item.strip()}
+
+
+def _meeting_duration_seconds(meeting: Meeting) -> int | None:
+    if meeting.started_at is None or meeting.ended_at is None:
+        return None
+    return max(0, int((meeting.ended_at - meeting.started_at).total_seconds()))
+
+
+async def _count_meeting_segments(meeting_id: UUID, db: DBSession) -> int:
+    result = await db.execute(
+        select(func.count())
+        .select_from(TranscriptSegment)
+        .where(TranscriptSegment.meeting_id == meeting_id)
+    )
+    return int(result.scalar_one())
+
+
+async def _has_meeting_transcript(meeting_id: UUID, db: DBSession) -> bool:
+    return await _count_meeting_segments(meeting_id, db) > 0
+
+
+async def _has_meeting_summary(meeting_id: UUID, db: DBSession) -> bool:
+    result = await db.execute(
+        select(func.count())
+        .select_from(MeetingSummary)
+        .where(MeetingSummary.meeting_id == meeting_id)
+    )
+    return int(result.scalar_one()) > 0
+
+
+async def _available_translation_languages(meeting_id: UUID, db: DBSession) -> list[str]:
+    result = await db.execute(
+        select(SegmentTranslation.target_language)
+        .join(TranscriptSegment, TranscriptSegment.id == SegmentTranslation.segment_id)
+        .where(TranscriptSegment.meeting_id == meeting_id)
+        .distinct()
+        .order_by(SegmentTranslation.target_language.asc())
+    )
+    return list(result.scalars().all())
 
 
 def _segment_response(segment: TranscriptSegment) -> TranscriptSegmentResponse:
@@ -259,6 +321,7 @@ async def list_meetings(
         meetings=[
             _meeting_response(
                 item.meeting,
+                duration_seconds=_meeting_duration_seconds(item.meeting),
                 has_transcript=item.has_transcript,
                 has_summary=item.has_summary,
             )
@@ -276,7 +339,13 @@ async def join_meeting(room_code: str, db: DBSession) -> JoinMeetingResponse:
     meeting = await MeetingService(db).get_meeting_by_room_code(room_code)
     if meeting is None:
         raise NotFoundError("Meeting not found")
-    return _join_meeting_response(meeting)
+    return _join_meeting_response(
+        meeting,
+        duration_seconds=_meeting_duration_seconds(meeting),
+        has_transcript=await _has_meeting_transcript(meeting.id, db),
+        has_summary=await _has_meeting_summary(meeting.id, db),
+        available_translations=await _available_translation_languages(meeting.id, db),
+    )
 
 
 @router.get("/{meeting_id}", response_model=MeetingResponse)
@@ -286,7 +355,13 @@ async def get_meeting(
     db: DBSession,
 ) -> MeetingResponse:
     meeting = await _get_owned_meeting(meeting_id, current_user, db)
-    return _meeting_response(meeting)
+    return _meeting_response(
+        meeting,
+        duration_seconds=_meeting_duration_seconds(meeting),
+        has_transcript=await _has_meeting_transcript(meeting.id, db),
+        has_summary=await _has_meeting_summary(meeting.id, db),
+        available_translations=await _available_translation_languages(meeting.id, db),
+    )
 
 
 @router.post(
@@ -333,7 +408,7 @@ async def get_meeting_transcript(
     include_translations: str | None = None,
 ) -> TranscriptResponse:
     meeting = await _get_owned_meeting(meeting_id, current_user, db)
-    translation_languages = _parse_translation_languages(include_translations)
+    translation_languages = _parse_translation_languages(include_translations) or set()
     transcript_service = TranscriptService(db, redis_manager.client)
     segments = await transcript_service.get_segments_by_meeting(
         meeting_id=meeting.id,
@@ -385,6 +460,7 @@ async def search_meeting_transcript(
     )
 
 
+@router.get("/join/{room_code}/transcript", response_model=TranscriptResponse)
 @public_router.get("/join/{room_code}/transcript", response_model=TranscriptResponse)
 async def get_public_meeting_transcript(
     room_code: str,
@@ -393,11 +469,9 @@ async def get_public_meeting_transcript(
     offset: OffsetQuery = 0,
     include_translations: str | None = None,
 ) -> TranscriptResponse:
-    meeting = await MeetingService(db).get_meeting_by_room_code(room_code)
-    if meeting is None:
-        raise NotFoundError("Meeting not found")
+    meeting = await _get_replay_meeting_by_room_code(room_code, db)
 
-    translation_languages = _parse_translation_languages(include_translations)
+    translation_languages = _parse_translation_languages(include_translations) or set()
     transcript_service = TranscriptService(db, redis_manager.client)
     segments = await transcript_service.get_segments_by_meeting(
         meeting_id=meeting.id,
@@ -413,6 +487,115 @@ async def get_public_meeting_transcript(
         total_segments=total_segments,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/join/{room_code}/transcript/search", response_model=TranscriptSearchResponse)
+@public_router.get("/join/{room_code}/transcript/search", response_model=TranscriptSearchResponse)
+async def search_public_meeting_transcript(
+    room_code: str,
+    q: Annotated[str, Query(min_length=1)],
+    db: DBSession,
+    language: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> TranscriptSearchResponse:
+    meeting = await _get_replay_meeting_by_room_code(room_code, db)
+    normalized_language = language.lower() if language else None
+    include_languages = {normalized_language} if normalized_language else set()
+    transcript_service = TranscriptService(db, redis_manager.client)
+    matches = await transcript_service.search_segments(
+        meeting_id=meeting.id,
+        query=q,
+        limit=limit,
+        language=normalized_language,
+        include_translations=include_languages,
+    )
+    return TranscriptSearchResponse(
+        meeting_id=meeting.id,
+        query=q,
+        language=normalized_language,
+        matches=[
+            _search_match_response(segment, query=q, language=normalized_language)
+            for segment in matches
+        ],
+        total_matches=len(matches),
+        limit=limit,
+    )
+
+
+@router.get("/join/{room_code}/summary", response_model=MeetingSummaryResponse)
+@public_router.get("/join/{room_code}/summary", response_model=MeetingSummaryResponse)
+async def get_public_meeting_summary(room_code: str, db: DBSession) -> MeetingSummaryResponse:
+    meeting = await _get_replay_meeting_by_room_code(room_code, db)
+    summary = await SummaryService(db).get_summary_or_raise(meeting.id)
+    return _meeting_summary_response(summary)
+
+
+@router.post(
+    "/join/{room_code}/summary",
+    response_model=MeetingSummaryResponse | MeetingSummaryProcessingResponse,
+)
+@public_router.post(
+    "/join/{room_code}/summary",
+    response_model=MeetingSummaryResponse | MeetingSummaryProcessingResponse,
+)
+async def generate_public_meeting_summary(
+    room_code: str,
+    payload: MeetingSummaryRequest,
+    response: Response,
+    db: DBSession,
+) -> MeetingSummaryResponse | MeetingSummaryProcessingResponse:
+    meeting = await _get_replay_meeting_by_room_code(room_code, db)
+    summary, generated = await SummaryService(db).ensure_summary(
+        meeting_id=meeting.id,
+        regenerate=payload.regenerate,
+    )
+    if not generated:
+        return _meeting_summary_response(summary)
+
+    response.status_code = status.HTTP_202_ACCEPTED
+    return MeetingSummaryProcessingResponse(status="processing", estimated_seconds=45)
+
+
+@router.post("/join/{room_code}/translate", response_model=MeetingTranslateResponse)
+@public_router.post("/join/{room_code}/translate", response_model=MeetingTranslateResponse)
+async def translate_public_meeting(
+    room_code: str,
+    data: MeetingTranslateRequest,
+    db: DBSession,
+) -> MeetingTranslateResponse:
+    meeting = await _get_replay_meeting_by_room_code(room_code, db)
+    service = _new_translation_service(db)
+    target_language = service.validate_language_code(data.target_language)
+    source_language = service.validate_language_code(meeting.source_language)
+    segments = await service.transcript_service.get_segments_by_meeting(
+        meeting.id,
+        limit=10_000,
+        offset=0,
+    )
+    total_segments = len(segments)
+    cached_count = await service.count_cached_translations(meeting.id, target_language)
+
+    if cached_count >= total_segments:
+        return MeetingTranslateResponse(
+            meeting_id=meeting.id,
+            target_language=target_language,
+            status="complete",
+            segments_translated=cached_count,
+            total_segments=total_segments,
+        )
+
+    translated_count, _ = await service.backfill_meeting_translations(
+        meeting.id,
+        source_language=source_language,
+        target_language=target_language,
+    )
+    return MeetingTranslateResponse(
+        meeting_id=meeting.id,
+        target_language=target_language,
+        status="processing",
+        segments_translated=translated_count,
+        total_segments=total_segments,
     )
 
 
