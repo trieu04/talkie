@@ -157,6 +157,7 @@ class TranslationService:
         _ = self.validate_language_code(target_language)
         stmt = (
             select(func.count())
+            .select_from(SegmentTranslation)
             .join(TranscriptSegment, TranscriptSegment.id == SegmentTranslation.segment_id)
             .where(
                 TranscriptSegment.meeting_id == meeting_id,

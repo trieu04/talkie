@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -49,8 +50,8 @@ async def app_error_handler(_: Request, exc: Exception) -> JSONResponse:
     )
 
 
-def _sanitize_errors(errors: list[dict]) -> list[dict]:
-    sanitized = []
+def _sanitize_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
     for err in errors:
         clean = {k: v for k, v in err.items() if k != "ctx"}
         ctx = err.get("ctx")
@@ -70,7 +71,7 @@ async def validation_error_handler(_: Request, exc: Exception) -> JSONResponse:
             "error": {
                 "code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
-                "details": _sanitize_errors(validation_error.errors()),
+                "details": _sanitize_errors(list(validation_error.errors())),
             }
         },
     )

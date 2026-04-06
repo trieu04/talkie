@@ -10,7 +10,8 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.auth import hosts_router, router as auth_router
+from src.api.auth import hosts_router
+from src.api.auth import router as auth_router
 from src.api.meetings import public_router as public_meetings_router
 from src.api.meetings import router as meetings_router
 from src.api.websocket import router as websocket_router

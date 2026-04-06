@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-from typing import cast
 
 from redis.asyncio import ConnectionPool, Redis
 
@@ -10,12 +9,9 @@ from src.core.config import settings
 
 class RedisManager:
     def __init__(self) -> None:
-        self._pool: ConnectionPool = cast(
-            ConnectionPool,
-            ConnectionPool.from_url(
-                settings.redis_url,
-                decode_responses=True,
-            ),
+        self._pool: ConnectionPool = ConnectionPool.from_url(
+            settings.redis_url,
+            decode_responses=True,
         )
         self._client: Redis = Redis(connection_pool=self._pool)
 
@@ -27,7 +23,7 @@ class RedisManager:
         result = self._client.ping()
         if inspect.isawaitable(result):
             return bool(await result)
-        return bool(cast(bool, result))
+        return bool(result)
 
     async def close(self) -> None:
         await self._client.aclose()

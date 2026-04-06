@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, with_loader_criteria
+from sqlalchemy.sql import Select
 
 from src.core.exceptions import NotFoundError
 from src.models import Meeting, SegmentTranslation, TranscriptSegment
@@ -280,7 +281,7 @@ class TranscriptService:
 
     def _translation_rank_query(
         self, meeting_id: UUID, ts_query: object, language: str | None = None
-    ):
+    ) -> Select[tuple[UUID, int, float]]:
         translation_vector = func.to_tsvector("simple", SegmentTranslation.translated_text)
         translation_rank = func.ts_rank(translation_vector, ts_query)
         stmt = (
