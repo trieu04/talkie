@@ -3,12 +3,14 @@ import {
   Box,
   CircularProgress,
   Fade,
+  LinearProgress,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import { keyframes } from '@mui/system';
+import { useTranslation } from 'react-i18next';
 
 import type { TranscriptSegment, TranslationMap } from '@/types';
 
@@ -17,6 +19,7 @@ interface TranscriptViewProps {
   translations?: TranslationMap;
   selectedLanguage?: string | null;
   isLoading?: boolean;
+  isBackfillInProgress?: boolean;
   autoScroll?: boolean;
 }
 
@@ -41,6 +44,7 @@ interface SegmentItemProps {
   translation: string | undefined;
   selectedLanguage: string | null | undefined;
   isTranslationPending: boolean;
+  t: (key: string) => string;
 }
 
 const SegmentItem = memo(function SegmentItem({
@@ -48,6 +52,7 @@ const SegmentItem = memo(function SegmentItem({
   translation,
   selectedLanguage,
   isTranslationPending,
+  t,
 }: SegmentItemProps) {
   const isPartial = segment.is_partial ?? false;
   const showConfidence = !isPartial && segment.confidence !== undefined && segment.confidence >= 0.8;
@@ -55,6 +60,7 @@ const SegmentItem = memo(function SegmentItem({
   return (
     <Fade in timeout={300}>
       <Paper
+        component="article"
         elevation={0}
         sx={{
           p: 2,
@@ -119,20 +125,34 @@ const SegmentItem = memo(function SegmentItem({
             {selectedLanguage && (
               <Box sx={{ mt: 1, pl: 1, borderLeft: 2, borderColor: 'primary.main' }}>
                 {translation ? (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: 'text.secondary',
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    {translation}
-                  </Typography>
+                  <Stack spacing={0.25}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'primary.main',
+                        fontWeight: 600,
+                        fontSize: '0.65rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {selectedLanguage.toUpperCase()}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'text.secondary',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {translation}
+                    </Typography>
+                  </Stack>
                 ) : isTranslationPending ? (
                   <Stack direction="row" spacing={1} alignItems="center">
                     <CircularProgress size={12} />
                     <Typography variant="body2" color="text.disabled">
-                      Translating...
+                      {t('translation.translating')}
                     </Typography>
                   </Stack>
                 ) : null}
@@ -145,7 +165,7 @@ const SegmentItem = memo(function SegmentItem({
   );
 });
 
-function EmptyState({ isLoading }: { isLoading: boolean }) {
+function EmptyState({ isLoading, t }: { isLoading: boolean; t: (key: string) => string }) {
   return (
     <Stack
       alignItems="center"
@@ -157,7 +177,7 @@ function EmptyState({ isLoading }: { isLoading: boolean }) {
         <>
           <CircularProgress size={32} />
           <Typography variant="body2" color="text.secondary">
-            Loading transcript...
+            {t('translation.loadingTranscript')}
           </Typography>
         </>
       ) : (
@@ -184,7 +204,7 @@ function EmptyState({ isLoading }: { isLoading: boolean }) {
             />
           </Box>
           <Typography variant="body2" color="text.secondary">
-            Waiting for speech...
+            {t('translation.waitingForSpeech')}
           </Typography>
         </>
       )}
@@ -197,8 +217,10 @@ export default function TranscriptView({
   translations = {},
   selectedLanguage,
   isLoading = false,
+  isBackfillInProgress = false,
   autoScroll = true,
 }: TranscriptViewProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const prevSegmentCountRef = useRef(segments.length);
 
@@ -227,7 +249,15 @@ export default function TranscriptView({
 
   return (
     <Box
+      component="section"
       ref={containerRef}
+      role="log"
+      aria-label="Live transcript"
+      aria-live="polite"
+      aria-relevant="additions text"
+      aria-atomic="false"
+      aria-busy={isLoading || isBackfillInProgress}
+      tabIndex={0}
       sx={{
         maxHeight: 480,
         overflowY: 'auto',
@@ -237,6 +267,13 @@ export default function TranscriptView({
         border: 1,
         borderColor: 'divider',
         position: 'relative',
+        outline: 'none',
+        '&:focus-visible': {
+          outline: '3px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: 2,
+          borderRadius: 2,
+        },
       }}
     >
       {hasSegments && (
@@ -251,6 +288,17 @@ export default function TranscriptView({
             zIndex: 0,
           }}
         />
+      )}
+
+      {isBackfillInProgress && selectedLanguage && (
+        <Box sx={{ px: 2, pt: 2 }}>
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="text.secondary">
+              {t('translation.backfillInProgress')}
+            </Typography>
+            <LinearProgress variant="indeterminate" sx={{ borderRadius: 1 }} />
+          </Stack>
+        </Box>
       )}
 
       <Stack spacing={1} sx={{ p: 2, position: 'relative', zIndex: 1 }}>
@@ -271,11 +319,12 @@ export default function TranscriptView({
                 translation={translation}
                 selectedLanguage={selectedLanguage}
                 isTranslationPending={isTranslationPending}
+                t={t}
               />
             );
           })
         ) : (
-          <EmptyState isLoading={isLoading} />
+          <EmptyState isLoading={isLoading} t={t} />
         )}
       </Stack>
     </Box>

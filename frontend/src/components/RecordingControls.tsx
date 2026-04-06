@@ -141,10 +141,45 @@ export default function RecordingControls({
   const showPermissionWarning = permissionStatus === 'denied';
   const showPermissionPrompt = permissionStatus === 'prompt' && status === 'created';
 
+  const handleKeyboardToggle = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.currentTarget !== event.target) {
+        return;
+      }
+
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (canStart) {
+        onStart();
+        return;
+      }
+
+      if (canStop) {
+        onStop();
+      }
+    },
+    [canStart, canStop, onStart, onStop],
+  );
+
   return (
-    <Stack spacing={2} alignItems="center">
+    <Stack
+      component="section"
+      spacing={2}
+      alignItems="center"
+      aria-label="Recording controls"
+      tabIndex={0}
+      onKeyDown={handleKeyboardToggle}
+      sx={{ outline: 'none', '&:focus-visible': { outline: '3px solid', outlineColor: 'primary.main', outlineOffset: 2, borderRadius: 2 } }}
+    >
       <Tooltip title={connectionStatusText} placement="top">
         <Box
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -199,6 +234,9 @@ export default function RecordingControls({
             fontWeight={600}
             fontFamily="monospace"
             color={isPaused ? 'text.disabled' : 'text.primary'}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
           >
             {formatDuration(elapsedSeconds)}
           </Typography>

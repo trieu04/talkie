@@ -1,24 +1,30 @@
-import { AppBar, Box, Button, Container, IconButton, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, Box, Button, CircularProgress, Container, IconButton, Stack, Toolbar, Typography } from '@mui/material';
 import Brightness4RoundedIcon from '@mui/icons-material/Brightness4Rounded';
 import TranslateRoundedIcon from '@mui/icons-material/TranslateRounded';
+import { Suspense, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BrowserRouter,
   Link as RouterLink,
   Navigate,
-  Outlet,
   Route,
   Routes,
+  Outlet,
   useLocation,
-  useParams,
 } from 'react-router-dom';
 
 import Home from '@/pages/Home';
 import Login from '@/pages/Login';
-import MeetingRoom from '@/pages/MeetingRoom';
 import Register from '@/pages/Register';
 import { useAuthStore } from '@/stores';
 import { useThemeMode } from '@/theme/ThemeProvider';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { NotificationProvider } from '@/components/Notifications';
+
+const History = lazy(() => import('@/pages/History'));
+const JoinMeeting = lazy(() => import('@/pages/JoinMeeting'));
+const MeetingReplay = lazy(() => import('@/pages/MeetingReplay'));
+const MeetingRoom = lazy(() => import('@/pages/MeetingRoom'));
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -81,48 +87,44 @@ function AppLayout() {
   );
 }
 
-function PlaceholderPage({ title, description }: { title: string; description: string }) {
+function AppLoadingFallback() {
   return (
-    <Stack spacing={1.5}>
-      <Typography variant="h4">{title}</Typography>
-      <Typography color="text.secondary">{description}</Typography>
-    </Stack>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <CircularProgress />
+    </Box>
   );
-}
-
-function JoinMeetingPage() {
-  const { roomCode } = useParams();
-  const { t } = useTranslation();
-
-  return (
-    <PlaceholderPage
-      title={t('routes.joinTitle')}
-      description={`${t('common.joinMeeting')}: ${roomCode}`}
-    />
-  );
-}
-
-function HistoryPage() {
-  const { t } = useTranslation();
-  return <PlaceholderPage title={t('routes.historyTitle')} description={t('common.history')} />;
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/join/:roomCode" element={<JoinMeetingPage />} />
+    <ErrorBoundary>
+      <NotificationProvider>
+        <BrowserRouter>
+          <Suspense fallback={<AppLoadingFallback />}>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/join/:roomCode" element={<JoinMeeting />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/meeting/:id" element={<MeetingRoom />} />
-            <Route path="/history" element={<HistoryPage />} />
-          </Route>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/meeting/:id" element={<MeetingRoom />} />
+                  <Route path="/meeting/:id/replay" element={<MeetingReplay />} />
+                  <Route path="/history" element={<History />} />
+                </Route>
+              </Route>
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </NotificationProvider>
+    </ErrorBoundary>
   );
 }
