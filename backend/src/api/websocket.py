@@ -7,7 +7,7 @@ import contextlib
 import json
 from datetime import datetime
 from importlib import import_module
-from typing import Annotated, Protocol, cast
+from typing import Annotated, Any, Protocol, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
@@ -219,7 +219,7 @@ async def _forward_transcript_events(websocket: WebSocket, meeting_id: UUID) -> 
         with contextlib.suppress(Exception):
             await pubsub.unsubscribe(channel)  # pyright: ignore[reportUnknownMemberType]
         with contextlib.suppress(Exception):
-            await pubsub.aclose()
+            await cast(Any, pubsub).aclose()
 
 
 async def _forward_translation_events(
@@ -270,7 +270,7 @@ async def _forward_translation_events(
         with contextlib.suppress(Exception):
             await pubsub.unsubscribe(channel)  # pyright: ignore[reportUnknownMemberType]
         with contextlib.suppress(Exception):
-            await pubsub.aclose()
+            await cast(Any, pubsub).aclose()
 
 
 def _parse_client_message(message: object) -> tuple[str | None, object]:
@@ -457,10 +457,18 @@ async def host_websocket(
 
     if not await websocket_manager.connect(meeting_id, websocket):
         return
-    transcript_task = asyncio.create_task(_forward_transcript_events(websocket, meeting_id))
+    transcript_listener_id: int | None = None
     session_id = str(uuid4())
 
     try:
+
+        async def send_transcript_event(payload: dict[str, object]) -> None:
+            await _send_json(websocket, payload)
+
+        transcript_listener_id = await websocket_manager.subscribe_transcript_listener(
+            meeting_id, send_transcript_event
+        )
+
         await _send_json(
             websocket,
             {
@@ -557,9 +565,10 @@ async def host_websocket(
     except WebSocketDisconnect:
         return
     finally:
-        _ = transcript_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            _ = await transcript_task
+        if transcript_listener_id is not None:
+            await websocket_manager.unsubscribe_transcript_listener(
+                meeting_id, transcript_listener_id
+            )
         await websocket_manager.disconnect(meeting_id, websocket)
 
 
@@ -580,14 +589,35 @@ async def participant_websocket(
     if not await websocket_manager.connect(meeting_id, websocket):
         return
     participant_count = await websocket_manager.add_participant(meeting_id, participant_id)
-    transcript_task = asyncio.create_task(_forward_transcript_events(websocket, meeting_id))
+    transcript_listener_id: int | None = None
     translation_state = ParticipantTranslationState()
-    translation_task = asyncio.create_task(
-        _forward_translation_events(websocket, meeting_id, translation_state)
-    )
+    translation_listener_id: int | None = None
     session_id = str(uuid4())
 
     try:
+
+        async def send_transcript_event(payload: dict[str, object]) -> None:
+            await _send_json(websocket, payload)
+
+        async def send_translation_event(payload: dict[str, object]) -> None:
+            message_payload = payload.get("payload")
+            if not isinstance(message_payload, dict):
+                return
+            current_language = translation_state.target_language
+            if (
+                current_language is None
+                or message_payload.get("target_language") != current_language
+            ):
+                return
+            await _send_json(websocket, payload)
+
+        transcript_listener_id = await websocket_manager.subscribe_transcript_listener(
+            meeting_id, send_transcript_event
+        )
+        translation_listener_id = await websocket_manager.subscribe_translation_listener(
+            meeting_id, send_translation_event
+        )
+
         await _send_json(
             websocket,
             {
@@ -676,12 +706,14 @@ async def participant_websocket(
     except WebSocketDisconnect:
         return
     finally:
-        _ = transcript_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            _ = await transcript_task
-        _ = translation_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            _ = await translation_task
+        if transcript_listener_id is not None:
+            await websocket_manager.unsubscribe_transcript_listener(
+                meeting_id, transcript_listener_id
+            )
+        if translation_listener_id is not None:
+            await websocket_manager.unsubscribe_translation_listener(
+                meeting_id, translation_listener_id
+            )
         participant_count = await websocket_manager.remove_participant(meeting_id, participant_id)
         await websocket_manager.disconnect(meeting_id, websocket)
         await _broadcast_participant_event(meeting_id, "participant_left", participant_count)
