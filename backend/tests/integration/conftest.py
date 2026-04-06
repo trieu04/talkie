@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from fastapi.testclient import TestClient
 from sqlalchemy import JSON, Column, MetaData, Table, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
@@ -191,6 +192,46 @@ async def integration_client(
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
+
+        app.user_middleware = original_middleware
+        app.middleware_stack = None
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def integration_sync_client(
+    integration_db_session,
+    mock_redis_manager_for_integration,
+    mock_storage_for_integration,
+):
+    with (
+        patch("src.core.redis.redis_manager", mock_redis_manager_for_integration),
+        patch("src.core.storage.storage", mock_storage_for_integration),
+        patch("src.api.meetings.redis_manager", mock_redis_manager_for_integration),
+        patch("src.api.meetings.storage", mock_storage_for_integration),
+        patch("src.api.websocket.redis_manager", mock_redis_manager_for_integration),
+        patch("src.api.websocket.storage", mock_storage_for_integration),
+        patch("src.api.worker.storage", mock_storage_for_integration),
+        patch("src.services.worker_service.redis_manager", mock_redis_manager_for_integration),
+        patch("src.core.websocket_manager.redis_manager", mock_redis_manager_for_integration),
+        patch("src.workers.chunk_monitor.run_chunk_monitor", new_callable=AsyncMock),
+    ):
+        from src.main import app
+
+        async def override_session():
+            yield integration_db_session
+
+        app.dependency_overrides[get_async_session] = override_session
+        app.middleware_stack = None
+        original_middleware = app.user_middleware[:]
+        app.user_middleware = [
+            m
+            for m in app.user_middleware
+            if not (hasattr(m, "cls") and m.cls.__name__ == "RateLimitMiddleware")
+        ]
+
+        with TestClient(app) as client:
+            yield client
 
         app.user_middleware = original_middleware
         app.middleware_stack = None
