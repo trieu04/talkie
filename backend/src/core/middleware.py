@@ -55,10 +55,31 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def _limit_for_path(self, path: str) -> tuple[str, int]:
         normalized = path.removeprefix(settings.api_v1_prefix)
+        normalized = self._normalize_dynamic_path(normalized)
         if normalized == "/auth/login":
             return ("auth_login", 10)
         if normalized == "/auth/register":
             return ("auth_register", 5)
+        if normalized == "/meetings/join/{room_code}":
+            return ("join_room", 30)
+        if normalized == "/meetings/join/{room_code}/transcript":
+            return ("join_room_transcript", 60)
+        if normalized == "/meetings/join/{room_code}/transcript/search":
+            return ("join_room_search", 30)
+        if normalized == "/meetings/join/{room_code}/summary":
+            return ("join_room_summary", 20)
+        if normalized == "/meetings/join/{room_code}/translate":
+            return ("join_room_translate", 20)
+        if normalized == "/join/{room_code}":
+            return ("public_join_room", 30)
+        if normalized == "/join/{room_code}/transcript":
+            return ("public_join_room_transcript", 60)
+        if normalized == "/join/{room_code}/transcript/search":
+            return ("public_join_room_search", 30)
+        if normalized == "/join/{room_code}/summary":
+            return ("public_join_room_summary", 20)
+        if normalized == "/join/{room_code}/translate":
+            return ("public_join_room_translate", 20)
         if normalized == "/worker" or normalized.startswith("/worker/"):
             return ("worker", 1000)
         return (normalized, self._default_limit)
@@ -77,3 +98,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if client and client.host:
             return client.host
         return "unknown"
+
+    def _normalize_dynamic_path(self, path: str) -> str:
+        parts = [part for part in path.split("/") if part]
+        if len(parts) >= 3 and parts[0] == "meetings" and parts[1] == "join":
+            parts[2] = "{room_code}"
+            return "/" + "/".join(parts)
+        if len(parts) >= 2 and parts[0] == "join":
+            parts[1] = "{room_code}"
+            return "/" + "/".join(parts)
+        if len(parts) >= 2 and parts[0] == "meetings":
+            parts[1] = "{meeting_id}"
+            return "/" + "/".join(parts)
+        return path
