@@ -78,6 +78,10 @@ export interface TranscriptSegment {
   end_time_ms: number;
   is_partial?: boolean;
   confidence?: number;
+  translations?: Array<{
+    target_language: string;
+    translated_text: string;
+  }>;
 }
 
 export type TranslationMap = Record<string, Record<string, string>>;
