@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import secrets
 import string
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import ClassVar, cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -11,7 +12,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import AppError, AuthorizationError, ConflictError, NotFoundError
-from src.models import Meeting, MeetingStatus
+from src.models import Meeting, MeetingStatus, MeetingSummary, TranscriptSegment
+
+
+@dataclass(slots=True)
+class MeetingListItem:
+    meeting: Meeting
+    has_transcript: bool
+    has_summary: bool
 
 
 class MeetingService:
@@ -103,14 +111,23 @@ class MeetingService:
 
     async def list_meetings(
         self, host_id: UUID, status: str | None, limit: int, offset: int
-    ) -> tuple[list[Meeting], int]:
+    ) -> tuple[list[MeetingListItem], int]:
         filters = [Meeting.host_id == host_id]
 
         if status is not None:
             filters.append(Meeting.status == self._parse_status(status))
 
+        has_transcript = (
+            select(TranscriptSegment.id).where(TranscriptSegment.meeting_id == Meeting.id).exists()
+        )
+        has_summary = (
+            select(MeetingSummary.id).where(MeetingSummary.meeting_id == Meeting.id).exists()
+        )
+
         items_result = await self.db.execute(
-            select(Meeting)
+            select(
+                Meeting, has_transcript.label("has_transcript"), has_summary.label("has_summary")
+            )
             .where(*filters)
             .order_by(Meeting.created_at.desc())
             .limit(limit)
@@ -120,7 +137,15 @@ class MeetingService:
             select(func.count()).select_from(Meeting).where(*filters)
         )
 
-        meetings = list(items_result.scalars().all())
+        rows = cast(list[tuple[Meeting, bool, bool]], items_result.all())
+        meetings = [
+            MeetingListItem(
+                meeting=meeting,
+                has_transcript=bool(item_has_transcript),
+                has_summary=bool(item_has_summary),
+            )
+            for meeting, item_has_transcript, item_has_summary in rows
+        ]
         total = count_result.scalar_one()
         return meetings, total
 

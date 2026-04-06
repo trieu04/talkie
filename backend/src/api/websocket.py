@@ -6,7 +6,8 @@ import binascii
 import contextlib
 import json
 from datetime import datetime
-from typing import Annotated, Any, cast
+from importlib import import_module
+from typing import Annotated, Protocol, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
@@ -26,6 +27,33 @@ from src.services.audio_chunk_service import AudioChunkService
 from src.services.meeting_service import MeetingService
 from src.services.transcript_service import TranscriptService
 
+
+class TranslationServiceProtocol(Protocol):
+    transcript_service: TranscriptService
+
+    def validate_language_code(self, language: str) -> str: ...
+
+    async def count_cached_translations(self, meeting_id: UUID, target_language: str) -> int: ...
+
+    async def backfill_meeting_translations(
+        self,
+        meeting_id: UUID,
+        *,
+        source_language: str,
+        target_language: str,
+    ) -> tuple[int, int]: ...
+
+
+class TranslationServiceFactory(Protocol):
+    def __call__(self, session: object, redis: object) -> TranslationServiceProtocol: ...
+
+
+def _new_translation_service(session: object) -> TranslationServiceProtocol:
+    module = import_module("src.services.translation_service")
+    service_class = cast(TranslationServiceFactory, module.TranslationService)
+    return service_class(session, redis_manager.client)
+
+
 router = APIRouter(prefix="/ws")
 
 
@@ -42,6 +70,15 @@ class RecordingControlPayload(BaseModel):
 
 class SyncRequestPayload(BaseModel):
     last_sequence: int = Field(ge=0)
+    target_language: str | None = Field(default=None, max_length=10)
+
+
+class SetLanguagePayload(BaseModel):
+    target_language: str = Field(min_length=2, max_length=10)
+
+
+class ParticipantTranslationState(BaseModel):
+    target_language: str | None = None
 
 
 def _base_url() -> str:
@@ -133,23 +170,41 @@ async def _get_owned_meeting(meeting_id: UUID, host_id: UUID) -> Meeting:
         return meeting
 
 
+async def _get_meeting_by_room_code(room_code: str) -> Meeting:
+    async with AsyncSessionFactory() as session:
+        meeting = await MeetingService(session).get_meeting_by_room_code(room_code)
+        if meeting is None:
+            raise NotFoundError("Meeting not found")
+        return meeting
+
+
+async def _get_participant_meeting(meeting_id: UUID, room_code: str) -> Meeting:
+    meeting = await _get_meeting_by_room_code(room_code)
+    if meeting.id != meeting_id:
+        raise AuthorizationError("Room code does not match this meeting")
+    return meeting
+
+
 async def _forward_transcript_events(websocket: WebSocket, meeting_id: UUID) -> None:
-    pubsub = redis_manager.client.pubsub()
+    pubsub = redis_manager.client.pubsub()  # pyright: ignore[reportUnknownMemberType]
     channel = f"meeting:{meeting_id}:transcript"
-    await pubsub.subscribe(channel)
+    await pubsub.subscribe(channel)  # pyright: ignore[reportUnknownMemberType]
     try:
         while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+            message = await pubsub.get_message(  # pyright: ignore[reportUnknownVariableType]
+                ignore_subscribe_messages=True,
+                timeout=1.0,
+            )
             if message is None:
                 await asyncio.sleep(0.1)
                 continue
 
-            data = message.get("data")
+            data = message.get("data")  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
             if not isinstance(data, str):
                 continue
 
             try:
-                payload = json.loads(data)
+                payload = cast(object, json.loads(data))
             except json.JSONDecodeError:
                 continue
             if not isinstance(payload, dict):
@@ -162,9 +217,74 @@ async def _forward_transcript_events(websocket: WebSocket, meeting_id: UUID) -> 
         raise
     finally:
         with contextlib.suppress(Exception):
-            await pubsub.unsubscribe(channel)
+            await pubsub.unsubscribe(channel)  # pyright: ignore[reportUnknownMemberType]
         with contextlib.suppress(Exception):
             await pubsub.aclose()
+
+
+async def _forward_translation_events(
+    websocket: WebSocket,
+    meeting_id: UUID,
+    state: ParticipantTranslationState,
+) -> None:
+    pubsub = redis_manager.client.pubsub()  # pyright: ignore[reportUnknownMemberType]
+    channel = f"meeting:{meeting_id}:translation"
+    await pubsub.subscribe(channel)  # pyright: ignore[reportUnknownMemberType]
+    try:
+        while True:
+            message = await pubsub.get_message(  # pyright: ignore[reportUnknownVariableType]
+                ignore_subscribe_messages=True,
+                timeout=1.0,
+            )
+            if message is None:
+                await asyncio.sleep(0.1)
+                continue
+
+            data = message.get("data")  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+            if not isinstance(data, str):
+                continue
+
+            try:
+                payload = cast(object, json.loads(data))
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            payload_dict = cast(dict[str, object], payload)
+            message_payload = payload_dict.get("payload")
+            if not isinstance(message_payload, dict):
+                continue
+
+            current_language = state.target_language
+            target_language = cast(dict[str, object], message_payload).get("target_language")
+            if current_language is None or current_language != target_language:
+                continue
+
+            await _send_json(websocket, payload_dict)
+    except (RuntimeError, WebSocketDisconnect):
+        return
+    except asyncio.CancelledError:
+        raise
+    finally:
+        with contextlib.suppress(Exception):
+            await pubsub.unsubscribe(channel)  # pyright: ignore[reportUnknownMemberType]
+        with contextlib.suppress(Exception):
+            await pubsub.aclose()
+
+
+def _parse_client_message(message: object) -> tuple[str | None, object]:
+    if not isinstance(message, dict):
+        raise AppError(
+            message="Message must be a JSON object",
+            code="INVALID_MESSAGE",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    message_dict = cast(dict[str, object], message)
+    message_type = message_dict.get("type")
+    payload = message_dict.get("payload", {})
+    return (message_type if isinstance(message_type, str) else None), payload
 
 
 async def _handle_audio_chunk(meeting_id: UUID, payload: object) -> dict[str, object]:
@@ -249,10 +369,77 @@ async def _handle_sync_request(meeting_id: UUID, payload: object) -> dict[str, o
     return {
         "type": "sync_response",
         "payload": {
-            "last_sequence": sync_payload.last_sequence,
+            "last_sequence": segments[-1].sequence if segments else sync_payload.last_sequence,
             "segments": [_serialize_segment(segment) for segment in segments],
         },
     }
+
+
+async def _handle_set_language(
+    meeting: Meeting,
+    payload: object,
+    websocket: WebSocket,
+    state: ParticipantTranslationState,
+) -> None:
+    set_language_payload = SetLanguagePayload.model_validate(payload)
+
+    async with AsyncSessionFactory() as session:
+        translation_service = _new_translation_service(session)
+        target_language = translation_service.validate_language_code(
+            set_language_payload.target_language
+        )
+        source_language = translation_service.validate_language_code(meeting.source_language)
+        segments = await translation_service.transcript_service.get_segments_by_meeting(
+            meeting.id,
+            limit=10_000,
+            offset=0,
+        )
+        cached_count = await translation_service.count_cached_translations(
+            meeting.id, target_language
+        )
+        segments_to_translate = max(0, len(segments) - cached_count)
+        state.target_language = target_language
+
+        await _send_json(
+            websocket,
+            {
+                "type": "translation_language_changed",
+                "payload": {
+                    "target_language": target_language,
+                    "backfill_in_progress": segments_to_translate > 0,
+                    "segments_to_translate": segments_to_translate,
+                },
+            },
+        )
+
+        translated_count, _ = await translation_service.backfill_meeting_translations(
+            meeting.id,
+            source_language=source_language,
+            target_language=target_language,
+        )
+
+    await _send_json(
+        websocket,
+        {
+            "type": "translation_backfill_complete",
+            "payload": {
+                "target_language": state.target_language,
+                "segments_translated": translated_count,
+            },
+        },
+    )
+
+
+async def _broadcast_participant_event(
+    meeting_id: UUID, event_type: str, participant_count: int
+) -> None:
+    await websocket_manager.broadcast(
+        meeting_id,
+        {
+            "type": event_type,
+            "payload": {"participant_count": participant_count},
+        },
+    )
 
 
 @router.websocket("/meeting/{meeting_id}/host")
@@ -268,7 +455,8 @@ async def host_websocket(
         await _send_error_and_close(websocket, exc.message, code=exc.code)
         return
 
-    await websocket_manager.connect(meeting_id, websocket)
+    if not await websocket_manager.connect(meeting_id, websocket):
+        return
     transcript_task = asyncio.create_task(_forward_transcript_events(websocket, meeting_id))
     session_id = str(uuid4())
 
@@ -288,7 +476,7 @@ async def host_websocket(
 
         while True:
             try:
-                message = cast(Any, await websocket.receive_json())
+                message = cast(object, await websocket.receive_json())
             except ValueError:
                 await _send_json(
                     websocket,
@@ -302,21 +490,20 @@ async def host_websocket(
                 )
                 continue
 
-            if not isinstance(message, dict):
+            try:
+                message_type, payload = _parse_client_message(message)
+            except AppError as exc:
                 await _send_json(
                     websocket,
                     {
                         "type": "error",
                         "payload": {
-                            "code": "INVALID_MESSAGE",
-                            "message": "Message must be a JSON object",
+                            "code": exc.code,
+                            "message": exc.message,
                         },
                     },
                 )
                 continue
-
-            message_type = message.get("type")
-            payload = message.get("payload", {})
 
             try:
                 if message_type == "audio_chunk":
@@ -370,7 +557,131 @@ async def host_websocket(
     except WebSocketDisconnect:
         return
     finally:
-        transcript_task.cancel()
+        _ = transcript_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             _ = await transcript_task
         await websocket_manager.disconnect(meeting_id, websocket)
+
+
+@router.websocket("/meeting/{meeting_id}/participant")
+async def participant_websocket(
+    websocket: WebSocket,
+    meeting_id: UUID,
+    room_code: Annotated[str, Query()],
+) -> None:
+    participant_id = str(uuid4())
+    try:
+        meeting = await _get_participant_meeting(meeting_id, room_code)
+    except AppError as exc:
+        error_code = "INVALID_ROOM_CODE" if isinstance(exc, NotFoundError) else exc.code
+        await _send_error_and_close(websocket, exc.message, code=error_code)
+        return
+
+    if not await websocket_manager.connect(meeting_id, websocket):
+        return
+    participant_count = await websocket_manager.add_participant(meeting_id, participant_id)
+    transcript_task = asyncio.create_task(_forward_transcript_events(websocket, meeting_id))
+    translation_state = ParticipantTranslationState()
+    translation_task = asyncio.create_task(
+        _forward_translation_events(websocket, meeting_id, translation_state)
+    )
+    session_id = str(uuid4())
+
+    try:
+        await _send_json(
+            websocket,
+            {
+                "type": "connected",
+                "payload": {
+                    "session_id": session_id,
+                    "role": "participant",
+                    "meeting": {
+                        "id": str(meeting.id),
+                        "title": meeting.title,
+                        "source_language": meeting.source_language,
+                        "status": meeting.status.value,
+                        "started_at": _serialize_datetime(meeting.started_at),
+                    },
+                    "participant_count": participant_count,
+                },
+            },
+        )
+        await _broadcast_participant_event(meeting_id, "participant_joined", participant_count)
+
+        while True:
+            try:
+                message = cast(object, await websocket.receive_json())
+            except ValueError:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "error",
+                        "payload": {
+                            "code": "INVALID_MESSAGE",
+                            "message": "Message must be valid JSON",
+                        },
+                    },
+                )
+                continue
+
+            try:
+                message_type, payload = _parse_client_message(message)
+            except AppError as exc:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "error",
+                        "payload": {
+                            "code": exc.code,
+                            "message": exc.message,
+                        },
+                    },
+                )
+                continue
+
+            try:
+                if message_type == "ping":
+                    await _send_json(websocket, {"type": "pong", "payload": {}})
+                elif message_type == "sync_request":
+                    response = await _handle_sync_request(meeting_id, payload)
+                    await _send_json(websocket, response)
+                elif message_type == "set_language":
+                    await _handle_set_language(meeting, payload, websocket, translation_state)
+                else:
+                    raise AppError(
+                        message=f"Unsupported message type '{message_type}'",
+                        code="INVALID_MESSAGE_TYPE",
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                    )
+            except ValidationError as exc:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "error",
+                        "payload": {
+                            "code": "VALIDATION_ERROR",
+                            "message": "Invalid websocket payload",
+                            "details": exc.errors(),
+                        },
+                    },
+                )
+            except AppError as exc:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "error",
+                        "payload": {"code": exc.code, "message": exc.message},
+                    },
+                )
+    except WebSocketDisconnect:
+        return
+    finally:
+        _ = transcript_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            _ = await transcript_task
+        _ = translation_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            _ = await translation_task
+        participant_count = await websocket_manager.remove_participant(meeting_id, participant_id)
+        await websocket_manager.disconnect(meeting_id, websocket)
+        await _broadcast_participant_event(meeting_id, "participant_left", participant_count)

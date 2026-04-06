@@ -8,11 +8,12 @@ from typing import cast
 from uuid import UUID
 
 from redis.asyncio import Redis
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from src.core.exceptions import NotFoundError
-from src.models import Meeting, TranscriptSegment
+from src.models import Meeting, SegmentTranslation, TranscriptSegment
 
 
 class TranscriptService:
@@ -101,6 +102,7 @@ class TranscriptService:
         meeting_id: UUID,
         limit: int = 100,
         offset: int = 0,
+        include_translations: set[str] | None = None,
     ) -> list[TranscriptSegment]:
         stmt = (
             select(TranscriptSegment)
@@ -109,8 +111,27 @@ class TranscriptService:
             .limit(limit)
             .offset(offset)
         )
+        if include_translations is not None:
+            stmt = stmt.options(selectinload(TranscriptSegment.translations))
+            if include_translations:
+                stmt = stmt.options(
+                    with_loader_criteria(
+                        SegmentTranslation,
+                        SegmentTranslation.target_language.in_(include_translations),
+                        include_aliases=True,
+                    )
+                )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_segments_by_meeting(self, meeting_id: UUID) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(TranscriptSegment)
+            .where(TranscriptSegment.meeting_id == meeting_id)
+        )
+        result = await self.db.execute(stmt)
+        return int(result.scalar_one())
 
     async def get_segments_since(
         self,
@@ -165,26 +186,68 @@ class TranscriptService:
         meeting_id: UUID,
         query: str,
         limit: int = 20,
+        language: str | None = None,
+        include_translations: set[str] | None = None,
     ) -> list[TranscriptSegment]:
         normalized_query = self._normalize_tsquery(query)
         if normalized_query is None:
             return []
 
-        search_vector = func.to_tsvector("simple", TranscriptSegment.text)
         ts_query = func.to_tsquery("simple", normalized_query)
-        rank = func.ts_rank(search_vector, ts_query)
+        source_vector = func.to_tsvector("simple", TranscriptSegment.text)
+        source_rank = func.ts_rank(source_vector, ts_query)
 
-        stmt = (
-            select(TranscriptSegment)
-            .where(
-                TranscriptSegment.meeting_id == meeting_id,
-                search_vector.op("@@")(ts_query),
+        source_matches = select(
+            TranscriptSegment.id.label("segment_id"),
+            TranscriptSegment.sequence.label("sequence"),
+            source_rank.label("rank"),
+        ).where(
+            TranscriptSegment.meeting_id == meeting_id,
+            source_vector.op("@@")(ts_query),
+        )
+
+        rank_queries = [source_matches]
+        if language is not None:
+            translation_query = self._translation_rank_query(meeting_id, ts_query, language)
+            rank_queries = [translation_query]
+        else:
+            rank_queries.append(self._translation_rank_query(meeting_id, ts_query))
+
+        combined_select = rank_queries[0] if len(rank_queries) == 1 else union_all(*rank_queries)
+        combined_matches = combined_select.subquery()
+        ranking_stmt = (
+            select(
+                combined_matches.c.segment_id,
+                func.max(combined_matches.c.rank).label("rank"),
+                func.min(combined_matches.c.sequence).label("sequence"),
             )
-            .order_by(rank.desc(), TranscriptSegment.sequence.asc())
+            .group_by(combined_matches.c.segment_id)
+            .order_by(
+                func.max(combined_matches.c.rank).desc(),
+                func.min(combined_matches.c.sequence).asc(),
+            )
             .limit(limit)
         )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        ranking_result = await self.db.execute(ranking_stmt)
+        ranked_rows = ranking_result.all()
+        if not ranked_rows:
+            return []
+
+        segment_ids = [cast(UUID, row.segment_id) for row in ranked_rows]
+        segments_stmt = select(TranscriptSegment).where(TranscriptSegment.id.in_(segment_ids))
+        if include_translations is not None:
+            segments_stmt = segments_stmt.options(selectinload(TranscriptSegment.translations))
+            if include_translations:
+                segments_stmt = segments_stmt.options(
+                    with_loader_criteria(
+                        SegmentTranslation,
+                        SegmentTranslation.target_language.in_(include_translations),
+                        include_aliases=True,
+                    )
+                )
+        segments_result = await self.db.execute(segments_stmt)
+        segment_map = {segment.id: segment for segment in segments_result.scalars().all()}
+        return [segment_map[segment_id] for segment_id in segment_ids if segment_id in segment_map]
 
     async def _get_segment_or_raise(self, segment_id: UUID) -> TranscriptSegment:
         segment = await self.get_segment(segment_id)
@@ -214,3 +277,24 @@ class TranscriptService:
         if not terms:
             return None
         return " & ".join(f"{term}:*" for term in terms)
+
+    def _translation_rank_query(
+        self, meeting_id: UUID, ts_query: object, language: str | None = None
+    ):
+        translation_vector = func.to_tsvector("simple", SegmentTranslation.translated_text)
+        translation_rank = func.ts_rank(translation_vector, ts_query)
+        stmt = (
+            select(
+                TranscriptSegment.id.label("segment_id"),
+                TranscriptSegment.sequence.label("sequence"),
+                translation_rank.label("rank"),
+            )
+            .join(SegmentTranslation, SegmentTranslation.segment_id == TranscriptSegment.id)
+            .where(
+                TranscriptSegment.meeting_id == meeting_id,
+                translation_vector.op("@@")(ts_query),
+            )
+        )
+        if language is not None:
+            stmt = stmt.where(SegmentTranslation.target_language == language)
+        return stmt
