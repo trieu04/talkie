@@ -18,7 +18,61 @@
     "loading": "Đang tải...",
     "toggleTheme": "Đổi giao diện",
     "switchLanguage": "Đổi ngôn ngữ",
-    "viewAll": "Xem tất cả"
+    "viewAll": "Xem tất cả",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép!"
+  },
+  "errorBoundary": {
+    "title": "Đã có lỗi xảy ra",
+    "description": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.",
+    "retry": "Thử lại"
+  },
+  "join": {
+    "invalidRoomCode": "Mã phòng không hợp lệ",
+    "fetchError": "Không thể tham gia cuộc họp. Vui lòng kiểm tra mã phòng và thử lại.",
+    "meetingEnded": "Cuộc họp này đã kết thúc. Bạn có thể xem lại bản phiên âm bên dưới.",
+    "transcriptReplay": "Phát lại bản phiên âm"
+  },
+  "meeting": {
+    "untitled": "Cuộc họp không có tiêu đề",
+    "liveTranscript": "Bản phiên âm trực tiếp",
+    "recordingControls": "Điều khiển ghi âm",
+    "shareSection": "Chia sẻ cuộc họp",
+    "joinUrlLabel": "Chia sẻ liên kết này với người tham gia:",
+    "copyLink": "Sao chép liên kết",
+    "copyRoomCode": "Sao chép mã phòng",
+    "participantsConnected": "{{count}} người tham gia đã kết nối",
+    "notFound": "Không tìm thấy cuộc họp",
+    "fetchError": "Không thể tải cuộc họp",
+    "status": {
+      "created": "Đã tạo",
+      "recording": "Đang ghi",
+      "paused": "Tạm dừng",
+      "ended": "Đã kết thúc",
+      "ended_abnormal": "Đã kết thúc"
+    }
+  },
+  "summary": {
+    "title": "Tóm tắt cuộc họp",
+    "generateButton": "Tạo tóm tắt",
+    "generating": "Đang tạo tóm tắt...",
+    "estimatedTime": "Quá trình này có thể mất tới 60 giây",
+    "overview": "Tổng quan",
+    "keyPoints": "Điểm chính",
+    "decisions": "Quyết định",
+    "actionItems": "Hạng mục hành động",
+    "noSummary": "Chưa có tóm tắt",
+    "noKeyPoints": "Không có điểm chính nào được xác định",
+    "noDecisions": "Không có quyết định nào được ghi nhận",
+    "noActionItems": "Không có hạng mục hành động nào",
+    "generateError": "Không thể tạo tóm tắt. Vui lòng thử lại.",
+    "fetchError": "Không thể tải tóm tắt",
+    "task": "Nhiệm vụ",
+    "assignee": "Người được giao",
+    "deadline": "Hạn chót",
+    "unassigned": "Chưa phân công",
+    "noDeadline": "Không có hạn chót",
+    "context": "Bối cảnh"
   },
   "home": {
     "createMeeting": "Tạo cuộc họp",
@@ -70,5 +124,44 @@
     "meetingTitle": "Phòng họp",
     "joinTitle": "Tham gia cuộc họp",
     "historyTitle": "Lịch sử cuộc họp"
+  },
+  "history": {
+    "description": "Xem và phát lại các cuộc họp trước.",
+    "fetchError": "Không thể tải danh sách cuộc họp. Vui lòng thử lại.",
+    "noMeetings": "Chưa có cuộc họp nào. Hãy tạo cuộc họp đầu tiên!",
+    "unknownDate": "Không rõ ngày",
+    "hasTranscript": "Phiên âm",
+    "hasSummary": "Tóm tắt",
+    "showingResults": "Hiển thị {{start}}-{{end}} trong tổng số {{total}} cuộc họp"
+  },
+  "replay": {
+    "backToHistory": "Quay lại lịch sử",
+    "transcript": "Bản phiên âm",
+    "loadMore": "Tải thêm",
+    "segmentCount": "{{loaded}} trong tổng số {{total}} phân đoạn",
+    "searchPlaceholder": "Tìm trong bản phiên âm...",
+    "searchNoResults": "Không tìm thấy phân đoạn phù hợp.",
+    "searchResultCount": "{{count}} kết quả",
+    "translationError": "Không thể yêu cầu dịch. Vui lòng thử lại.",
+    "summaryError": "Không thể tạo tóm tắt. Vui lòng thử lại.",
+    "generateSummary": "Tạo tóm tắt",
+    "requestTranslation": "Dịch"
+  },
+  "translation": {
+    "targetLanguage": "Dịch sang",
+    "noTranslation": "Không (chỉ ngôn ngữ gốc)",
+    "translating": "Đang dịch...",
+    "backfillInProgress": "Đang dịch các phân đoạn trước...",
+    "loadingTranscript": "Đang tải bản phiên âm...",
+    "waitingForSpeech": "Đang chờ giọng nói...",
+    "languages": {
+      "en": "Tiếng Anh",
+      "vi": "Tiếng Việt",
+      "ja": "Tiếng Nhật",
+      "ko": "Tiếng Hàn",
+      "zh": "Tiếng Trung",
+      "fr": "Tiếng Pháp",
+      "es": "Tiếng Tây Ban Nha"
+    }
   }
 }

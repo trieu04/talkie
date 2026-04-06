@@ -18,7 +18,61 @@
     "loading": "Loading...",
     "toggleTheme": "Toggle theme",
     "switchLanguage": "Switch language",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "copy": "Copy",
+    "copied": "Copied!"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again.",
+    "retry": "Try Again"
+  },
+  "join": {
+    "invalidRoomCode": "Invalid room code",
+    "fetchError": "Unable to join meeting. Please check the room code and try again.",
+    "meetingEnded": "This meeting has ended. You can view the transcript replay below.",
+    "transcriptReplay": "Transcript Replay"
+  },
+  "meeting": {
+    "untitled": "Untitled Meeting",
+    "liveTranscript": "Live Transcript",
+    "recordingControls": "Recording Controls",
+    "shareSection": "Share Meeting",
+    "joinUrlLabel": "Share this link with participants:",
+    "copyLink": "Copy link",
+    "copyRoomCode": "Copy room code",
+    "participantsConnected": "{{count}} participant(s) connected",
+    "notFound": "Meeting not found",
+    "fetchError": "Unable to load meeting",
+    "status": {
+      "created": "Created",
+      "recording": "Recording",
+      "paused": "Paused",
+      "ended": "Ended",
+      "ended_abnormal": "Ended"
+    }
+  },
+  "summary": {
+    "title": "Meeting Summary",
+    "generateButton": "Generate Summary",
+    "generating": "Generating summary...",
+    "estimatedTime": "This may take up to 60 seconds",
+    "overview": "Overview",
+    "keyPoints": "Key Points",
+    "decisions": "Decisions",
+    "actionItems": "Action Items",
+    "noSummary": "No summary available",
+    "noKeyPoints": "No key points identified",
+    "noDecisions": "No decisions recorded",
+    "noActionItems": "No action items found",
+    "generateError": "Failed to generate summary. Please try again.",
+    "fetchError": "Failed to load summary",
+    "task": "Task",
+    "assignee": "Assignee",
+    "deadline": "Deadline",
+    "unassigned": "Unassigned",
+    "noDeadline": "No deadline",
+    "context": "Context"
   },
   "home": {
     "createMeeting": "Create Meeting",
@@ -70,5 +124,44 @@
     "meetingTitle": "Meeting room",
     "joinTitle": "Join meeting",
     "historyTitle": "Meeting history"
+  },
+  "history": {
+    "description": "View and replay your past meetings.",
+    "fetchError": "Unable to load meetings. Please try again.",
+    "noMeetings": "No meetings yet. Create your first meeting!",
+    "unknownDate": "Unknown date",
+    "hasTranscript": "Transcript",
+    "hasSummary": "Summary",
+    "showingResults": "Showing {{start}}-{{end}} of {{total}} meetings"
+  },
+  "replay": {
+    "backToHistory": "Back to history",
+    "transcript": "Transcript",
+    "loadMore": "Load more segments",
+    "segmentCount": "{{loaded}} of {{total}} segments",
+    "searchPlaceholder": "Search transcript...",
+    "searchNoResults": "No matching segments found.",
+    "searchResultCount": "{{count}} result(s)",
+    "translationError": "Unable to request translation. Please try again.",
+    "summaryError": "Unable to generate summary. Please try again.",
+    "generateSummary": "Generate Summary",
+    "requestTranslation": "Translate"
+  },
+  "translation": {
+    "targetLanguage": "Translate to",
+    "noTranslation": "None (source only)",
+    "translating": "Translating...",
+    "backfillInProgress": "Translating previous segments...",
+    "loadingTranscript": "Loading transcript...",
+    "waitingForSpeech": "Waiting for speech...",
+    "languages": {
+      "en": "English",
+      "vi": "Vietnamese",
+      "ja": "Japanese",
+      "ko": "Korean",
+      "zh": "Chinese",
+      "fr": "French",
+      "es": "Spanish"
+    }
   }
 }

@@ -11,7 +11,7 @@ const MAX_RECONNECT_DELAY_MS = 32000;
 const INITIAL_RECONNECT_DELAY_MS = 1000;
 
 const resolveWebSocketBaseUrl = (): string => {
-  const configuredBaseUrl = import.meta.env.VITE_WS_BASE_URL;
+  const configuredBaseUrl = import.meta.env.VITE_WS_BASE_URL ?? import.meta.env.VITE_WS_URL;
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/$/, '');
   }

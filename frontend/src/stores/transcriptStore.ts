@@ -7,9 +7,12 @@ interface TranscriptStore {
   segments: TranscriptSegment[];
   translations: TranslationMap;
   isLoading: boolean;
+  isBackfillInProgress: boolean;
+  backfillLanguage: string | null;
   addSegment: (segment: TranscriptSegment) => void;
   updateSegment: (segmentId: string, updates: Partial<TranscriptSegment>) => void;
   setTranslation: (segmentId: string, language: string, translatedText: string) => void;
+  setBackfillStatus: (inProgress: boolean, language: string | null) => void;
   clearSegments: () => void;
   setLoading: (isLoading: boolean) => void;
 }
@@ -23,6 +26,8 @@ export const useTranscriptStore = create<TranscriptStore>()(
       segments: [],
       translations: {},
       isLoading: false,
+      isBackfillInProgress: false,
+      backfillLanguage: null,
       addSegment(segment) {
         set((state) => {
           const existingIndex = state.segments.findIndex((item) => item.id === segment.id);
@@ -55,8 +60,11 @@ export const useTranscriptStore = create<TranscriptStore>()(
           },
         }));
       },
+      setBackfillStatus(inProgress, language) {
+        set({ isBackfillInProgress: inProgress, backfillLanguage: language });
+      },
       clearSegments() {
-        set({ segments: [], translations: {}, isLoading: false });
+        set({ segments: [], translations: {}, isLoading: false, isBackfillInProgress: false, backfillLanguage: null });
       },
       setLoading(isLoading) {
         set({ isLoading });

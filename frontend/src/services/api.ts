@@ -8,7 +8,7 @@ import axios, {
 import { useAuthStore } from '@/stores/authStore';
 import type { ApiErrorResponse, RefreshTokenResponse } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? '/api/v1';
 
 interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;

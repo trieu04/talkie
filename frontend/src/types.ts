@@ -104,6 +104,26 @@ export interface WebSocketConnectOptions {
   roomCode?: string;
 }
 
+export interface MeetingSummaryDecision {
+  decision: string;
+  context: string;
+}
+
+export interface MeetingSummaryActionItem {
+  task: string;
+  assignee: string | null;
+  deadline: string | null;
+}
+
+export interface MeetingSummary {
+  id: string;
+  content: string;
+  key_points: string[];
+  decisions: MeetingSummaryDecision[];
+  action_items: MeetingSummaryActionItem[];
+  created_at: string;
+}
+
 export interface ApiErrorResponse {
   detail?: string | { message?: string };
   message?: string;

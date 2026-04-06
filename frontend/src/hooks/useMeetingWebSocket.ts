@@ -437,6 +437,29 @@ export const useMeetingWebSocket = (
           });
           break;
         }
+        case 'translation_segment': {
+          const segmentId = asString(payload.segment_id);
+          const targetLanguage = asString(payload.target_language);
+          const translatedText = asString(payload.translated_text);
+
+          if (segmentId && targetLanguage && translatedText) {
+            useTranscriptStore.getState().setTranslation(segmentId, targetLanguage, translatedText);
+          }
+          break;
+        }
+        case 'translation_language_changed': {
+          const targetLanguage = asString(payload.target_language);
+          const backfillInProgress = payload.backfill_in_progress === true;
+
+          if (backfillInProgress && targetLanguage) {
+            useTranscriptStore.getState().setBackfillStatus(true, targetLanguage);
+          }
+          break;
+        }
+        case 'translation_backfill_complete': {
+          useTranscriptStore.getState().setBackfillStatus(false, null);
+          break;
+        }
         case 'error': {
           setConnectionState('error');
           break;
@@ -483,12 +506,16 @@ export const useMeetingWebSocket = (
   }, [options.meetingId]);
 
   useEffect(() => {
+    if (!options.meetingId) {
+      return undefined;
+    }
+
     connect();
 
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [connect, disconnect, options.meetingId]);
 
   return {
     connectionState,
