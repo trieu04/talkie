@@ -11,22 +11,24 @@ branch_labels = None
 depends_on = None
 
 
-meeting_status = sa.Enum(
+meeting_status = postgresql.ENUM(
     "created",
     "recording",
     "paused",
     "ended",
     "ended_abnormal",
     name="meeting_status",
+    create_type=False,
 )
 
-audio_chunk_status = sa.Enum(
+audio_chunk_status = postgresql.ENUM(
     "pending",
     "assigned",
     "processing",
     "completed",
     "failed",
     name="audio_chunk_status",
+    create_type=False,
 )
 
 

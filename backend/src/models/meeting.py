@@ -44,7 +44,11 @@ class Meeting(UUIDPrimaryKeyMixin, TimestampMixin, UpdatedAtMixin, Base):
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_language: Mapped[str] = mapped_column(String(10), nullable=False, server_default="vi")
     status: Mapped[MeetingStatus] = mapped_column(
-        Enum(MeetingStatus, name="meeting_status"),
+        Enum(
+            MeetingStatus,
+            name="meeting_status",
+            values_callable=lambda e: [m.value for m in e],
+        ),
         nullable=False,
         server_default=MeetingStatus.CREATED.value,
     )

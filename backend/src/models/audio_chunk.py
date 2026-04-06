@@ -43,7 +43,11 @@ class AudioChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[AudioChunkStatus] = mapped_column(
-        Enum(AudioChunkStatus, name="audio_chunk_status"),
+        Enum(
+            AudioChunkStatus,
+            name="audio_chunk_status",
+            values_callable=lambda e: [m.value for m in e],
+        ),
         nullable=False,
         server_default=AudioChunkStatus.PENDING.value,
     )
