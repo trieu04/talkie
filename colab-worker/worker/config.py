@@ -4,6 +4,11 @@ from dataclasses import dataclass, field
 import os
 
 
+def _float_env(key: str, default: float) -> float:
+    value = os.getenv(key)
+    return float(value) if value else default
+
+
 @dataclass(slots=True)
 class WorkerConfig:
     server_url: str = field(
@@ -25,7 +30,22 @@ class WorkerConfig:
     whisper_device: str = "cuda"
 
     vad_enabled: bool = True
-    vad_threshold: float = 0.5
+    vad_threshold: float = field(
+        default_factory=lambda: _float_env("VAD_THRESHOLD", 0.5)
+    )
+
+    no_speech_threshold: float = field(
+        default_factory=lambda: _float_env("NO_SPEECH_THRESHOLD", 0.5)
+    )
+    log_prob_threshold: float = field(
+        default_factory=lambda: _float_env("LOG_PROB_THRESHOLD", -0.5)
+    )
+    compression_ratio_threshold: float = field(
+        default_factory=lambda: _float_env("COMPRESSION_RATIO_THRESHOLD", 2.0)
+    )
+    min_confidence_threshold: float = field(
+        default_factory=lambda: _float_env("MIN_CONFIDENCE_THRESHOLD", 0.10)
+    )
 
     def api_url(self, path: str) -> str:
         base = self.server_url.rstrip("/")

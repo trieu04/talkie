@@ -189,3 +189,41 @@ async def test_heartbeat_wrong_worker(
         json={"worker_id": "wrong-worker", "progress_percent": 50},
     )
     assert response.status_code == 409
+
+
+async def test_submit_empty_segments_for_silence(
+    integration_client: AsyncClient,
+    meeting_with_chunks: tuple[Meeting, list[AudioChunk]],
+    integration_db_session: AsyncSession,
+):
+    from sqlalchemy import select
+    from src.models import TranscriptSegment
+
+    _, chunks = meeting_with_chunks
+    chunk = chunks[0]
+
+    chunk.status = AudioChunkStatus.ASSIGNED
+    chunk.worker_id = "test-worker-1"
+    chunk.assigned_at = datetime.now(UTC) + timedelta(seconds=30)
+    await integration_db_session.commit()
+
+    response = await integration_client.post(
+        f"/api/v1/worker/jobs/{chunk.id}/result",
+        json={
+            "worker_id": "test-worker-1",
+            "segments": [],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "accepted"
+    assert body["segments_created"] == 0
+
+    await integration_db_session.refresh(chunk)
+    assert chunk.status == AudioChunkStatus.COMPLETED
+
+    result = await integration_db_session.execute(
+        select(TranscriptSegment).where(TranscriptSegment.audio_chunk_id == chunk.id)
+    )
+    segments = result.scalars().all()
+    assert len(segments) == 0

@@ -43,7 +43,16 @@ class AudioProcessor:
         audio_windows = self._prepare_audio_windows(waveform, sample_rate)
         progress_callback(20)
 
-        chunk_duration_ms = max(int(audio_duration_seconds * 1000), 1)
+        if not audio_windows:
+            elapsed = time.perf_counter() - started_at
+            logger.info(
+                "Processed %.2fs audio into 0 segment(s) in %.2fs (no speech detected)",
+                audio_duration_seconds,
+                elapsed,
+            )
+            progress_callback(100)
+            return []
+
         results: list[dict[str, Any]] = []
 
         for index, window in enumerate(audio_windows, start=1):
@@ -56,16 +65,6 @@ class AudioProcessor:
             results.extend(segment_results)
             progress = 20 + int((index / len(audio_windows)) * 75)
             progress_callback(min(progress, 95))
-
-        if not results and audio_duration_seconds > 0:
-            results.append(
-                {
-                    "text": "",
-                    "start_offset_ms": 0,
-                    "end_offset_ms": chunk_duration_ms,
-                    "confidence": 0.0,
-                }
-            )
 
         elapsed = time.perf_counter() - started_at
         logger.info(
@@ -100,16 +99,23 @@ class AudioProcessor:
 
         timestamps = self._detect_speech_segments(waveform, sample_rate)
         if not timestamps:
-            return [{"audio": waveform, "start_offset_ms": 0}]
+            logger.debug(
+                "VAD detected no speech in audio chunk, skipping transcription"
+            )
+            return []
 
-        return [
+        windows = [
             {
                 "audio": waveform[int(item["start"]) : int(item["end"])],
                 "start_offset_ms": int((int(item["start"]) / sample_rate) * 1000),
             }
             for item in timestamps
             if int(item["end"]) > int(item["start"])
-        ] or [{"audio": waveform, "start_offset_ms": 0}]
+        ]
+        if not windows:
+            logger.debug("VAD speech segments too short, skipping transcription")
+            return []
+        return windows
 
     def _transcribe_segment(
         self,
@@ -132,16 +138,30 @@ class AudioProcessor:
             vad_filter=False,
             beam_size=1,
             condition_on_previous_text=False,
+            no_speech_threshold=self.config.no_speech_threshold,
+            log_prob_threshold=self.config.log_prob_threshold,
+            compression_ratio_threshold=self.config.compression_ratio_threshold,
         )
 
         results: list[dict[str, Any]] = []
         for segment in segments:
+            text = segment.text.strip()
+            if not text:
+                continue
+            confidence = self._segment_confidence(segment)
+            if confidence < self.config.min_confidence_threshold:
+                logger.debug(
+                    "Skipping low-confidence segment: '%.50s...' (confidence=%.3f)",
+                    text,
+                    confidence,
+                )
+                continue
             results.append(
                 {
-                    "text": segment.text.strip(),
+                    "text": text,
                     "start_offset_ms": start_offset_ms + int(segment.start * 1000),
                     "end_offset_ms": start_offset_ms + int(segment.end * 1000),
-                    "confidence": self._segment_confidence(segment),
+                    "confidence": confidence,
                 }
             )
         return results
