@@ -1,23 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Box,
   Button,
+  CircularProgress,
   IconButton,
   Stack,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import MicIcon from '@mui/icons-material/Mic';
-import MicOffIcon from '@mui/icons-material/MicOff';
-import PauseIcon from '@mui/icons-material/Pause';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
+import MicRoundedIcon from '@mui/icons-material/MicRounded';
+import MicOffRoundedIcon from '@mui/icons-material/MicOffRounded';
+import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import RadioButtonCheckedRoundedIcon from '@mui/icons-material/RadioButtonCheckedRounded';
+import StopRoundedIcon from '@mui/icons-material/StopRounded';
 import { useTranslation } from 'react-i18next';
 
 import type { MeetingStatus } from '@/types';
+import { MetricChip, StatusBadge } from './SurfacePrimitives';
 
 export interface RecordingControlsProps {
   status: MeetingStatus;
@@ -25,14 +24,12 @@ export interface RecordingControlsProps {
   isRecording: boolean;
   permissionStatus: 'prompt' | 'granted' | 'denied' | 'unknown';
   startedAt: string | null;
-  onStart: () => void;
+  onStart: () => void | Promise<void>;
   onStop: () => void;
   onPause: () => void;
   onResume: () => void;
   error?: string | null;
 }
-
-type ConnectionIndicatorStatus = 'connected' | 'reconnecting' | 'disconnected';
 
 const formatDuration = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
@@ -44,12 +41,6 @@ const formatDuration = (seconds: number): string => {
   }
 
   return `${minutes}:${String(secs).padStart(2, '0')}`;
-};
-
-const CONNECTION_INDICATOR_COLORS: Record<ConnectionIndicatorStatus, string> = {
-  connected: '#22c55e',
-  reconnecting: '#eab308',
-  disconnected: '#ef4444',
 };
 
 export default function RecordingControls({
@@ -66,38 +57,15 @@ export default function RecordingControls({
 }: RecordingControlsProps) {
   const { t } = useTranslation();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isErrorDismissed, setIsErrorDismissed] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
-  const connectionIndicatorStatus: ConnectionIndicatorStatus = (() => {
-    if (isConnected) {
-      return 'connected';
-    }
-
-    if (status === 'recording' || status === 'paused') {
-      return 'reconnecting';
-    }
-
-    return 'disconnected';
-  })();
-
-  const connectionStatusText = (() => {
-    switch (connectionIndicatorStatus) {
-      case 'connected':
-        return t('recording.connected');
-      case 'reconnecting':
-        return t('recording.reconnecting');
-      case 'disconnected':
-        return t('recording.disconnected');
-    }
-  })();
-
-  const isActiveRecording = status === 'recording';
   const isPaused = status === 'paused';
   const isEnded = status === 'ended' || status === 'ended_abnormal';
-  const canStart = status === 'created' && isConnected;
-  const canStop = isActiveRecording || isPaused;
+  const isActiveRecording = status === 'recording';
+  const canStart = status === 'created' && isConnected && !isStarting;
   const canPause = isActiveRecording;
   const canResume = isPaused;
+  const canStop = isActiveRecording || isPaused;
 
   useEffect(() => {
     if (!startedAt || isEnded) {
@@ -105,11 +73,9 @@ export default function RecordingControls({
       return undefined;
     }
 
-    const startTime = new Date(startedAt).getTime();
-
+    const startedAtMs = new Date(startedAt).getTime();
     const updateElapsed = () => {
-      const now = Date.now();
-      setElapsedSeconds(Math.floor((now - startTime) / 1000));
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)));
     };
 
     updateElapsed();
@@ -119,27 +85,41 @@ export default function RecordingControls({
     }
 
     const intervalId = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [isEnded, isPaused, startedAt]);
 
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [startedAt, isEnded, isPaused]);
+  const connectionTone = useMemo(() => {
+    if (isConnected) {
+      return 'completed' as const;
+    }
 
-  useEffect(() => {
-    setIsErrorDismissed(false);
-  }, [error]);
+    if (isActiveRecording || isPaused) {
+      return 'reconnecting' as const;
+    }
 
-  const handleDismissError = useCallback(() => {
-    setIsErrorDismissed(true);
-  }, []);
+    return 'danger' as const;
+  }, [isActiveRecording, isConnected, isPaused]);
 
-  const handleRequestPermission = useCallback(() => {
-    onStart();
+  const connectionLabel = useMemo(() => {
+    if (isConnected) {
+      return t('recording.connected');
+    }
+
+    if (isActiveRecording || isPaused) {
+      return t('recording.reconnecting');
+    }
+
+    return t('recording.disconnected');
+  }, [isActiveRecording, isConnected, isPaused, t]);
+
+  const handleStart = useCallback(async () => {
+    setIsStarting(true);
+    try {
+      await onStart();
+    } finally {
+      setIsStarting(false);
+    }
   }, [onStart]);
-
-  const showError = error && !isErrorDismissed;
-  const showPermissionWarning = permissionStatus === 'denied';
-  const showPermissionPrompt = permissionStatus === 'prompt' && status === 'created';
 
   const handleKeyboardToggle = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
@@ -154,7 +134,7 @@ export default function RecordingControls({
       event.preventDefault();
 
       if (canStart) {
-        onStart();
+        void handleStart();
         return;
       }
 
@@ -162,229 +142,109 @@ export default function RecordingControls({
         onStop();
       }
     },
-    [canStart, canStop, onStart, onStop],
+    [canStart, canStop, handleStart, onStop],
   );
 
   return (
     <Stack
       component="section"
-      spacing={2}
-      alignItems="center"
       aria-label="Recording controls"
+      spacing={2.5}
+      alignItems="stretch"
       tabIndex={0}
       onKeyDown={handleKeyboardToggle}
-      sx={{ outline: 'none', '&:focus-visible': { outline: '3px solid', outlineColor: 'primary.main', outlineOffset: 2, borderRadius: 2 } }}
+      sx={{
+        outline: 'none',
+        '&:focus-visible': {
+          outline: '3px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: 2,
+          borderRadius: 4,
+        },
+      }}
     >
-      <Tooltip title={connectionStatusText} placement="top">
-        <Box
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 2,
-            bgcolor: 'action.hover',
-          }}
-        >
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              bgcolor: CONNECTION_INDICATOR_COLORS[connectionIndicatorStatus],
-              boxShadow:
-                connectionIndicatorStatus === 'reconnecting'
-                  ? `0 0 8px ${CONNECTION_INDICATOR_COLORS.reconnecting}`
-                  : 'none',
-              animation:
-                connectionIndicatorStatus === 'reconnecting'
-                  ? 'pulseReconnect 1.5s ease-in-out infinite'
-                  : 'none',
-              '@keyframes pulseReconnect': {
-                '0%, 100%': { opacity: 1 },
-                '50%': { opacity: 0.4 },
-              },
-            }}
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <StatusBadge label={connectionLabel} tone={connectionTone} />
+          <StatusBadge
+            label={t(`meeting.status.${status}`)}
+            tone={isActiveRecording ? 'live' : isPaused ? 'paused' : isEnded ? 'completed' : 'default'}
           />
-          <Typography variant="caption" color="text.secondary">
-            {connectionStatusText}
-          </Typography>
-        </Box>
-      </Tooltip>
-
-      {(isActiveRecording || isPaused) && (
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <FiberManualRecordIcon
-            sx={{
-              fontSize: 12,
-              color: isActiveRecording ? '#ef4444' : 'text.disabled',
-              animation: isActiveRecording ? 'blink 1s ease-in-out infinite' : 'none',
-              '@keyframes blink': {
-                '0%, 100%': { opacity: 1 },
-                '50%': { opacity: 0.3 },
-              },
-            }}
-          />
-          <Typography
-            variant="h5"
-            fontWeight={600}
-            fontFamily="monospace"
-            color={isPaused ? 'text.disabled' : 'text.primary'}
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {formatDuration(elapsedSeconds)}
-          </Typography>
-          {isPaused && (
-            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-              {t('recording.paused')}
-            </Typography>
-          )}
         </Stack>
-      )}
-
-      <Stack direction="row" spacing={2} alignItems="center">
-        {status === 'created' && (
-          <Tooltip title={canStart ? t('recording.start') : t('recording.waitingConnection')}>
-            <span>
-              <IconButton
-                onClick={onStart}
-                disabled={!canStart}
-                aria-label={t('recording.start')}
-                sx={{
-                  bgcolor: canStart ? '#ef4444' : 'action.disabledBackground',
-                  color: canStart ? 'white' : 'action.disabled',
-                  width: 64,
-                  height: 64,
-                  '&:hover': {
-                    bgcolor: canStart ? '#dc2626' : 'action.disabledBackground',
-                  },
-                  '&:disabled': {
-                    bgcolor: 'action.disabledBackground',
-                    color: 'action.disabled',
-                  },
-                }}
-              >
-                <MicIcon sx={{ fontSize: 32 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
-        )}
-
-        {canPause && (
-          <Tooltip title={t('recording.pause')}>
-            <IconButton
-              onClick={onPause}
-              aria-label={t('recording.pause')}
-              sx={{
-                bgcolor: 'action.hover',
-                width: 48,
-                height: 48,
-                '&:hover': {
-                  bgcolor: 'action.selected',
-                },
-              }}
-            >
-              <PauseIcon sx={{ fontSize: 24 }} />
-            </IconButton>
-          </Tooltip>
-        )}
-
-        {canResume && (
-          <Tooltip title={t('recording.resume')}>
-            <IconButton
-              onClick={onResume}
-              aria-label={t('recording.resume')}
-              sx={{
-                bgcolor: '#22c55e',
-                color: 'white',
-                width: 48,
-                height: 48,
-                '&:hover': {
-                  bgcolor: '#16a34a',
-                },
-              }}
-            >
-              <PlayArrowIcon sx={{ fontSize: 24 }} />
-            </IconButton>
-          </Tooltip>
-        )}
-
-        {canStop && (
-          <Tooltip title={t('recording.stop')}>
-            <IconButton
-              onClick={onStop}
-              aria-label={t('recording.stop')}
-              sx={{
-                bgcolor: '#ef4444',
-                color: 'white',
-                width: 64,
-                height: 64,
-                '&:hover': {
-                  bgcolor: '#dc2626',
-                },
-              }}
-            >
-              <StopIcon sx={{ fontSize: 32 }} />
-            </IconButton>
-          </Tooltip>
-        )}
+        <MetricChip
+          icon={<RadioButtonCheckedRoundedIcon sx={{ fontSize: 18, color: isPaused ? 'warning.main' : 'error.main' }} />}
+          label={t('recording.elapsed')}
+          value={canStop || isEnded ? formatDuration(elapsedSeconds) : '00:00'}
+        />
       </Stack>
 
-      {isRecording && isActiveRecording && (
-        <Typography variant="caption" color="error" fontWeight={500}>
-          {t('recording.recordingInProgress')}
-        </Typography>
-      )}
+      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', lg: 'center' }}>
+        <Stack spacing={0.5}>
+          <Typography variant="sectionTitle">{t('recording.primaryActionTitle')}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {isActiveRecording
+              ? t('recording.recordingInProgress')
+              : isPaused
+                ? t('recording.pausedHelper')
+                : isEnded
+                  ? t('recording.recordingEnded')
+                  : t('recording.readyHelper')}
+          </Typography>
+        </Stack>
 
-      {isEnded && (
-        <Typography color="text.secondary">{t('recording.recordingEnded')}</Typography>
-      )}
+        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent={{ xs: 'space-between', sm: 'flex-end' }} flexWrap="wrap" useFlexGap>
+          {status === 'created' ? (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={isStarting ? <CircularProgress size={18} color="inherit" /> : <MicRoundedIcon />}
+              disabled={!canStart}
+              onClick={() => void handleStart()}
+              sx={{ minWidth: 168 }}
+            >
+              {t('recording.start')}
+            </Button>
+          ) : null}
 
-      {showPermissionWarning && (
-        <Alert
-          severity="warning"
-          icon={<MicOffIcon />}
-          sx={{ width: '100%', maxWidth: 400 }}
-        >
+          {canPause ? (
+            <IconButton onClick={onPause} aria-label={t('recording.pause')} sx={{ bgcolor: 'background.level1' }}>
+              <PauseRoundedIcon />
+            </IconButton>
+          ) : null}
+
+          {canResume ? (
+            <IconButton onClick={onResume} aria-label={t('recording.resume')} sx={{ bgcolor: 'success.main', color: 'success.contrastText', '&:hover': { bgcolor: 'success.dark' } }}>
+              <PlayArrowRoundedIcon />
+            </IconButton>
+          ) : null}
+
+          {canStop ? (
+            <Button variant="outlined" color="error" startIcon={<StopRoundedIcon />} onClick={onStop}>
+              {t('recording.stop')}
+            </Button>
+          ) : null}
+        </Stack>
+      </Stack>
+
+      {permissionStatus === 'denied' ? (
+        <Alert severity="warning" icon={<MicOffRoundedIcon />}>
           {t('recording.microphoneDenied')}
         </Alert>
-      )}
+      ) : null}
 
-      {showPermissionPrompt && (
-        <Button
-          variant="outlined"
-          startIcon={<MicIcon />}
-          onClick={handleRequestPermission}
-          sx={{ mt: 1 }}
-        >
+      {permissionStatus === 'prompt' && status === 'created' ? (
+        <Button variant="text" startIcon={<MicRoundedIcon />} onClick={() => void handleStart()} sx={{ alignSelf: 'flex-start' }}>
           {t('recording.grantMicrophoneAccess')}
         </Button>
-      )}
+      ) : null}
 
-      {showError && (
-        <Alert
-          severity="error"
-          sx={{ width: '100%', maxWidth: 400 }}
-          action={
-            <IconButton
-              aria-label={t('common.cancel')}
-              color="inherit"
-              size="small"
-              onClick={handleDismissError}
-            >
-              <CloseIcon fontSize="inherit" />
-            </IconButton>
-          }
-        >
-          {error}
-        </Alert>
-      )}
+      {error ? <Alert severity="error">{error}</Alert> : null}
+
+      {isRecording && isActiveRecording ? (
+        <Typography variant="caption" color="error.main" fontWeight={700}>
+          {t('recording.recordingInProgress')}
+        </Typography>
+      ) : null}
     </Stack>
   );
 }

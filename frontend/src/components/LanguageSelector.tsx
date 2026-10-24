@@ -1,11 +1,5 @@
-import { useCallback } from 'react';
-import {
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  type SelectChangeEvent,
-} from '@mui/material';
+import { useCallback, useId } from 'react';
+import { Box, FormControl, InputLabel, MenuItem, Select, type SelectChangeEvent } from '@mui/material';
 import TranslateRoundedIcon from '@mui/icons-material/TranslateRounded';
 import { useTranslation } from 'react-i18next';
 
@@ -39,6 +33,8 @@ export default function LanguageSelector({
   size = 'small',
 }: LanguageSelectorProps) {
   const { t } = useTranslation();
+  const selectorId = useId();
+  const labelId = `${selectorId}-label`;
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -49,18 +45,20 @@ export default function LanguageSelector({
   );
 
   return (
-    <FormControl size={size} sx={{ minWidth: 180 }} disabled={disabled}>
-      <InputLabel id="language-selector-label">
-        <TranslateRoundedIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
-        {t('translation.targetLanguage')}
-      </InputLabel>
+    <FormControl size={size} sx={{ minWidth: 220 }} disabled={disabled}>
+      <InputLabel id={labelId}>{t('translation.targetLanguage')}</InputLabel>
       <Select
-        labelId="language-selector-label"
-        id="language-selector"
+        labelId={labelId}
+        id={selectorId}
         value={value ?? ''}
         label={t('translation.targetLanguage')}
         onChange={handleChange}
         inputProps={{ 'aria-label': t('translation.targetLanguage') }}
+        startAdornment={
+          <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.tertiary', ml: 1, mr: 0.5 }}>
+            <TranslateRoundedIcon sx={{ fontSize: 18 }} />
+          </Box>
+        }
       >
         {LANGUAGE_OPTIONS.map((option) => (
           <MenuItem key={option.code ?? 'none'} value={option.code ?? ''}>

@@ -1,19 +1,11 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   Alert,
-  Box,
   Button,
-  Card,
-  CardActionArea,
-  CardContent,
-  Chip,
-  CircularProgress,
   FormControl,
   Grid,
   InputLabel,
-  Link as MuiLink,
   MenuItem,
-  Paper,
   Select,
   Stack,
   TextField,
@@ -21,37 +13,62 @@ import {
   type SelectChangeEvent,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState, LoadingState } from '@/components/StatePanels';
+import { PageHeader, PageShell } from '@/components/PageShell';
+import { MetricChip, SectionCard, SectionStack, StatusBadge } from '@/components/SurfacePrimitives';
+import {
+  SUPPORTED_SOURCE_LANGUAGES,
+  formatMeetingDate,
+  getDurationMetricIcon,
+  getMeetingStatusIcon,
+  getMeetingStatusTone,
+} from '@/components/meetingUi';
 import { useMeetingStore } from '@/stores';
-import type { MeetingStatus } from '@/types';
-
-const SUPPORTED_LANGUAGES = [
-  { code: 'vi', label: 'Vietnamese' },
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: 'Japanese' },
-  { code: 'ko', label: 'Korean' },
-  { code: 'zh', label: 'Chinese' },
-];
-
-const STATUS_COLORS: Record<MeetingStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
-  created: 'default',
-  recording: 'success',
-  paused: 'warning',
-  ended: 'info',
-  ended_abnormal: 'error',
-};
+import type { Meeting } from '@/types';
 
 interface CreateMeetingFormState {
   title: string;
   sourceLanguage: string;
 }
 
+function RecentMeetingCard({ meeting }: { meeting: Meeting }) {
+  const { t } = useTranslation();
+  const linkTo = meeting.status === 'ended' || meeting.status === 'ended_abnormal' ? `/meeting/${meeting.id}/replay` : `/meeting/${meeting.id}`;
+
+  return (
+    <SectionCard
+      tone="muted"
+      title={meeting.title || t('meeting.untitled')}
+      description={formatMeetingDate(meeting.created_at)}
+      actions={
+        <StatusBadge
+          label={t(`meeting.status.${meeting.status}`)}
+          tone={getMeetingStatusTone(meeting.status)}
+          icon={getMeetingStatusIcon(meeting.status)}
+        />
+      }
+    >
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <MetricChip label={t('home.roomCode')} value={meeting.room_code} />
+          <MetricChip label={t('home.sourceLanguage')} value={t(`translation.languages.${meeting.source_language}`)} />
+          <MetricChip label={t('home.transcriptSegments')} value={meeting.transcript_segment_count ?? 0} icon={getDurationMetricIcon()} />
+        </Stack>
+        <Button component={RouterLink} to={linkTo} endIcon={<ArrowForwardRoundedIcon />}>
+          {meeting.status === 'ended' || meeting.status === 'ended_abnormal' ? t('home.reviewMeeting') : t('home.openMeeting')}
+        </Button>
+      </Stack>
+    </SectionCard>
+  );
+}
+
 export default function Home() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
   const { meetings, isLoading, error, createMeeting, fetchMeetings } = useMeetingStore();
 
   const [form, setForm] = useState<CreateMeetingFormState>({
@@ -65,17 +82,17 @@ export default function Home() {
     void fetchMeetings({ limit: 5 });
   }, [fetchMeetings]);
 
-  const recentMeetings = meetings.slice(0, 5);
+  const recentMeetings = useMemo(() => meetings.slice(0, 5), [meetings]);
 
   const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, title: event.target.value }));
+    setForm((previous) => ({ ...previous, title: event.target.value }));
     if (createError) {
       setCreateError(null);
     }
   };
 
   const handleLanguageChange = (event: SelectChangeEvent<string>) => {
-    setForm((prev) => ({ ...prev, sourceLanguage: event.target.value }));
+    setForm((previous) => ({ ...previous, sourceLanguage: event.target.value }));
   };
 
   const handleCreateMeeting = async (event: FormEvent<HTMLFormElement>) => {
@@ -85,39 +102,32 @@ export default function Home() {
 
     try {
       const meeting = await createMeeting({
-        title: form.title.trim() || 'Untitled Meeting',
+        title: form.title.trim() || t('meeting.untitled'),
         sourceLanguage: form.sourceLanguage,
       });
       navigate(`/meeting/${meeting.id}`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create meeting');
+      setCreateError(err instanceof Error ? err.message : t('home.createMeetingError'));
     } finally {
       setIsCreating(false);
     }
   };
 
   return (
-    <Stack spacing={4}>
-      <Box>
-        <Typography variant="h4" gutterBottom>
-          {t('routes.homeTitle')}
-        </Typography>
-        <Typography color="text.secondary">{t('common.welcome')}</Typography>
-      </Box>
-
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={5}>
-          <Paper elevation={0} sx={{ p: 3 }}>
-            <Stack spacing={3} component="form" onSubmit={handleCreateMeeting} noValidate>
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  {t('home.createMeeting')}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {t('home.createMeetingDescription')}
-                </Typography>
-              </Box>
-
+    <PageShell
+      header={
+        <PageHeader
+          eyebrow={t('home.eyebrow')}
+          title={t('routes.homeTitle')}
+          description={t('home.pageDescription')}
+          actions={null}
+        />
+      }
+    >
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={4}>
+          <SectionCard title={t('home.createMeeting')} description={t('home.createMeetingDescription')}>
+            <Stack id="create-meeting-form" component="form" spacing={2.5} onSubmit={handleCreateMeeting} noValidate>
               {createError ? <Alert severity="error">{createError}</Alert> : null}
 
               <TextField
@@ -125,104 +135,82 @@ export default function Home() {
                 placeholder={t('home.meetingTitlePlaceholder')}
                 value={form.title}
                 onChange={handleTitleChange}
-                fullWidth
               />
 
-              <FormControl fullWidth>
+              <FormControl>
                 <InputLabel id="source-language-label">{t('home.sourceLanguage')}</InputLabel>
                 <Select
                   labelId="source-language-label"
-                  id="source-language"
                   value={form.sourceLanguage}
                   label={t('home.sourceLanguage')}
                   onChange={handleLanguageChange}
                 >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <MenuItem key={lang.code} value={lang.code}>
-                      {lang.label}
+                  {SUPPORTED_SOURCE_LANGUAGES.map((language) => (
+                    <MenuItem key={language.code} value={language.code}>
+                      {t(language.translationKey)}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
 
-              <Button
-                type="submit"
-                variant="contained"
-                size="large"
-                disabled={isCreating}
-                aria-label={t('home.createMeeting')}
-                startIcon={isCreating ? <CircularProgress size={20} color="inherit" /> : <AddRoundedIcon />}
-              >
+              <Button type="submit" variant="contained" size="large" disabled={isCreating} startIcon={<AddRoundedIcon />}>
                 {t('home.createMeeting')}
               </Button>
             </Stack>
-          </Paper>
+          </SectionCard>
         </Grid>
 
-        <Grid item xs={12} md={7}>
-          <Paper elevation={0} sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">{t('home.recentMeetings')}</Typography>
-                <MuiLink component={RouterLink} to="/history" underline="hover">
-                  {t('common.viewAll')}
-                </MuiLink>
-              </Box>
-
+        <Grid item xs={12} lg={8}>
+          <SectionStack>
+            <SectionCard
+              title={t('home.recentMeetings')}
+              description={t('home.recentMeetingsDescription')}
+              actions={<Button component={RouterLink} to="/history">{t('common.viewAll')}</Button>}
+            >
               {error ? <Alert severity="error">{error}</Alert> : null}
 
               {isLoading ? (
-                <Box display="flex" justifyContent="center" py={4}>
-                  <CircularProgress />
-                </Box>
+                <LoadingState title={t('common.loading')} description={t('home.loadingMeetings')} />
               ) : recentMeetings.length === 0 ? (
-                <Typography color="text.secondary" textAlign="center" py={4}>
-                  {t('home.noMeetings')}
-                </Typography>
+                <EmptyState title={t('home.emptyTitle')} description={t('home.noMeetings')} />
               ) : (
-                <Stack spacing={2}>
+                <SectionStack>
                   {recentMeetings.map((meeting) => (
-                    <Card key={meeting.id} variant="outlined">
-                      <CardActionArea
-                        component={RouterLink}
-                        to={`/meeting/${meeting.id}`}
-                        aria-label={meeting.title || `Meeting ${meeting.room_code}`}
-                        sx={{ p: 0 }}
-                      >
-                        <CardContent sx={{ py: 2 }}>
-                          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                            <Box flex={1} minWidth={0}>
-                              <Typography variant="subtitle1" noWrap>
-                                {meeting.title || `Meeting ${meeting.room_code}`}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {meeting.created_at
-                                  ? new Date(meeting.created_at).toLocaleDateString(undefined, {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : 'Unknown date'}
-                              </Typography>
-                            </Box>
-                            <Chip
-                              label={t(`home.status.${meeting.status}`)}
-                              color={STATUS_COLORS[meeting.status]}
-                              size="small"
-                            />
-                          </Box>
-                        </CardContent>
-                      </CardActionArea>
-                    </Card>
+                    <RecentMeetingCard key={meeting.id} meeting={meeting} />
                   ))}
-                </Stack>
+                </SectionStack>
               )}
-            </Stack>
-          </Paper>
+            </SectionCard>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <SectionCard tone="muted">
+                  <Typography variant="metricValue">{meetings.length}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('home.metrics.totalMeetings')}
+                  </Typography>
+                </SectionCard>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <SectionCard tone="muted">
+                  <Typography variant="metricValue">{meetings.filter((meeting) => meeting.status === 'recording').length}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('home.metrics.liveNow')}
+                  </Typography>
+                </SectionCard>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <SectionCard tone="muted">
+                  <Typography variant="metricValue">{meetings.filter((meeting) => meeting.has_summary).length}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('home.metrics.withSummaries')}
+                  </Typography>
+                </SectionCard>
+              </Grid>
+            </Grid>
+          </SectionStack>
         </Grid>
       </Grid>
-    </Stack>
+    </PageShell>
   );
 }

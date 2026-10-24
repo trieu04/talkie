@@ -1,17 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Divider,
-  Paper,
-  Skeleton,
-  Stack,
-  Typography,
-} from '@mui/material';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, CircularProgress, Grid, Stack } from '@mui/material';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import LanguageRoundedIcon from '@mui/icons-material/LanguageRounded';
@@ -19,70 +7,40 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 
 import LanguageSelector from '@/components/LanguageSelector';
+import { PageHeader, PageShell } from '@/components/PageShell';
+import { ErrorState, LoadingState } from '@/components/StatePanels';
 import SummaryView from '@/components/SummaryView';
-import { SummarySkeleton, TranscriptSkeleton } from '@/components/Skeleton';
+import { MetricChip, SectionCard, SectionStack, StatusBadge } from '@/components/SurfacePrimitives';
 import TranscriptSearch from '@/components/TranscriptSearch';
 import TranscriptView from '@/components/TranscriptView';
+import {
+  formatDuration,
+  formatMeetingDate,
+  getDurationMetricIcon,
+  getMeetingStatusIcon,
+  getMeetingStatusTone,
+} from '@/components/meetingUi';
 import { meetingApi, type MeetingResponse } from '@/services/meetingApi';
-import type { MeetingSummary, MeetingStatus, TranscriptSegment, TranslationMap } from '@/types';
+import type { MeetingSummary, TranscriptSegment, TranslationMap } from '@/types';
 
 const TRANSCRIPT_PAGE_SIZE = 100;
 
-const mergeTranslations = (segments: TranscriptSegment[]): TranslationMap => {
-  return segments.reduce<TranslationMap>((accumulator, segment) => {
+const mergeTranslations = (segments: TranscriptSegment[]): TranslationMap =>
+  segments.reduce<TranslationMap>((accumulator, segment) => {
     if (!segment.translations?.length) {
       return accumulator;
     }
 
     accumulator[segment.id] = {
       ...(accumulator[segment.id] ?? {}),
-      ...Object.fromEntries(
-        segment.translations.map((translation) => [translation.target_language, translation.translated_text]),
-      ),
+      ...Object.fromEntries(segment.translations.map((translation) => [translation.target_language, translation.translated_text])),
     };
     return accumulator;
   }, {});
-};
-
-const STATUS_COLORS: Record<MeetingStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
-  created: 'default',
-  recording: 'success',
-  paused: 'warning',
-  ended: 'info',
-  ended_abnormal: 'error',
-};
-
-function formatDuration(seconds: number | undefined): string {
-  if (seconds === undefined || seconds === 0) {
-    return '-';
-  }
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  }
-  return `${secs}s`;
-}
-
-function LoadingPage() {
-  return (
-    <Stack spacing={3}>
-      <Skeleton variant="rounded" height={96} />
-      <TranscriptSkeleton />
-      <SummarySkeleton />
-    </Stack>
-  );
-}
 
 export default function MeetingReplay() {
   const { id: meetingId } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
   const [meeting, setMeeting] = useState<MeetingResponse | null>(null);
   const [isLoadingMeeting, setIsLoadingMeeting] = useState(true);
@@ -140,22 +98,20 @@ export default function MeetingReplay() {
           ...(selectedLanguage ? { include_translations: selectedLanguage } : {}),
         });
 
-        setSegments((prev) => {
-          const newSegments = response.segments.filter(
-            (segment) => !prev.some((p) => p.id === segment.id),
-          );
-          return [...prev, ...newSegments].sort((a, b) => a.sequence - b.sequence);
+        setSegments((previous) => {
+          const newSegments = response.segments.filter((segment) => !previous.some((current) => current.id === segment.id));
+          return [...previous, ...newSegments].sort((a, b) => a.sequence - b.sequence);
         });
-        setTranslations((prev) => ({ ...prev, ...mergeTranslations(response.segments) }));
+        setTranslations((previous) => ({ ...previous, ...mergeTranslations(response.segments) }));
         setTranscriptTotal(response.total);
         setHasMoreSegments(offset + response.segments.length < response.total);
-      } catch (_error) {
-        // Silently fail - transcript loading is non-critical for UX
+      } catch {
+        setTranslationError(t('replay.transcriptLoadError'));
       } finally {
         setIsLoadingTranscript(false);
       }
     },
-    [meetingId, selectedLanguage],
+    [meetingId, selectedLanguage, t],
   );
 
   useEffect(() => {
@@ -166,7 +122,7 @@ export default function MeetingReplay() {
     setSegments([]);
     setTranslations({});
     void loadTranscriptPage(0);
-  }, [meetingId, isLoadingMeeting, meetingError, loadTranscriptPage]);
+  }, [isLoadingMeeting, loadTranscriptPage, meetingError, meetingId]);
 
   useEffect(() => {
     if (!meetingId || !meeting?.has_summary) {
@@ -180,31 +136,30 @@ export default function MeetingReplay() {
       try {
         const data = await meetingApi.getSummary(meetingId);
         setSummary(data);
-      } catch (_error) {
-        // Silently fail - summary loading is non-critical for UX
+      } catch {
+        setSummaryError(t('summary.fetchError'));
       } finally {
         setIsLoadingSummary(false);
       }
     };
 
     void fetchSummary();
-  }, [meetingId, meeting?.has_summary]);
+  }, [meeting?.has_summary, meetingId, t]);
 
   const handleLoadMore = useCallback(() => {
     if (isLoadingTranscript || !hasMoreSegments) {
       return;
     }
     void loadTranscriptPage(segments.length);
-  }, [isLoadingTranscript, hasMoreSegments, segments.length, loadTranscriptPage]);
+  }, [hasMoreSegments, isLoadingTranscript, loadTranscriptPage, segments.length]);
 
   const handleSearchResultClick = useCallback((segmentId: string) => {
     const element = document.getElementById(`segment-${segmentId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      element.style.transition = 'background-color 0.3s';
-      element.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+      element.classList.add('talkie-segment-highlight');
       setTimeout(() => {
-        element.style.backgroundColor = '';
+        element.classList.remove('talkie-segment-highlight');
       }, 2000);
     }
   }, []);
@@ -226,13 +181,13 @@ export default function MeetingReplay() {
 
       try {
         await meetingApi.requestTranslation(meetingId, languageCode);
-        setMeeting((prev) =>
-          prev
+        setMeeting((previous) =>
+          previous
             ? {
-                ...prev,
-                available_translations: [...(prev.available_translations ?? []), languageCode],
+                ...previous,
+                available_translations: [...(previous.available_translations ?? []), languageCode],
               }
-            : prev,
+            : previous,
         );
       } catch {
         setTranslationError(t('replay.translationError'));
@@ -240,7 +195,7 @@ export default function MeetingReplay() {
         setIsRequestingTranslation(false);
       }
     },
-    [meetingId, meeting?.available_translations, t],
+    [meeting?.available_translations, meetingId, t],
   );
 
   const handleGenerateSummary = useCallback(async () => {
@@ -255,7 +210,7 @@ export default function MeetingReplay() {
       const response = await meetingApi.generateSummary(meetingId);
       if (response.status === 'completed' && response.summary) {
         setSummary(response.summary);
-        setMeeting((prev) => (prev ? { ...prev, has_summary: true } : prev));
+        setMeeting((previous) => (previous ? { ...previous, has_summary: true } : previous));
       }
     } catch {
       setSummaryError(t('replay.summaryError'));
@@ -264,193 +219,108 @@ export default function MeetingReplay() {
     }
   }, [meetingId, t]);
 
+  const transcriptDescription = useMemo(
+    () => t('replay.segmentCount', { loaded: segments.length, total: transcriptTotal || segments.length }),
+    [segments.length, t, transcriptTotal],
+  );
+
   if (isLoadingMeeting) {
-    return <LoadingPage />;
+    return <LoadingState title={t('replay.loadingTitle')} description={t('replay.loadingDescription')} />;
   }
 
   if (meetingError || !meeting) {
     return (
-      <Stack spacing={2}>
-        <Button
-          component={RouterLink}
-          to="/history"
-          startIcon={<ArrowBackRoundedIcon />}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          {t('replay.backToHistory')}
-        </Button>
-        <Alert severity="error">{meetingError ?? t('meeting.notFound')}</Alert>
-      </Stack>
+      <ErrorState
+        title={t('replay.errorTitle')}
+        description={meetingError ?? t('meeting.notFound')}
+        action={
+          <Button component={RouterLink} to="/history" startIcon={<ArrowBackRoundedIcon />}>
+            {t('replay.backToHistory')}
+          </Button>
+        }
+      />
     );
   }
 
   return (
-    <Stack spacing={3}>
-      <Button
-        component={RouterLink}
-        to="/history"
-        startIcon={<ArrowBackRoundedIcon />}
-        aria-label={t('replay.backToHistory')}
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        {t('replay.backToHistory')}
-      </Button>
-
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Typography role="status" aria-live="polite" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-            {isRequestingTranslation ? t('translation.translating') : isGeneratingSummary ? t('summary.generating') : ''}
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={2}
-            alignItems="flex-start"
-            justifyContent="space-between"
-            flexWrap="wrap"
-          >
-            <Box>
-              <Typography variant="h5" gutterBottom>
-                {meeting.title ?? t('meeting.untitled')}
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Chip
-                  size="small"
-                  color={STATUS_COLORS[meeting.status]}
-                  label={t(`meeting.status.${meeting.status}`)}
-                />
-                <Chip
-                  size="small"
-                  icon={<LanguageRoundedIcon />}
-                  label={meeting.source_language.toUpperCase()}
-                  variant="outlined"
-                />
-                {meeting.duration_seconds !== undefined && meeting.duration_seconds > 0 && (
-                  <Chip
-                    size="small"
-                    icon={<AccessTimeRoundedIcon />}
-                    label={formatDuration(meeting.duration_seconds)}
-                    variant="outlined"
-                  />
-                )}
-              </Stack>
-            </Box>
-
-            <Typography variant="body2" color="text.secondary">
-              {meeting.created_at
-                ? new Date(meeting.created_at).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                : ''}
-            </Typography>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-            justifyContent="space-between"
-          >
-            <Typography variant="h6">{t('replay.transcript')}</Typography>
-
-            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-              <LanguageSelector
-                value={selectedLanguage}
-                onChange={handleLanguageChange}
-                disabled={isRequestingTranslation}
+    <PageShell
+      header={
+        <PageHeader
+          eyebrow={t('replay.eyebrow')}
+          title={meeting.title ?? t('meeting.untitled')}
+          description={t('replay.pageDescription')}
+          actions={
+            <Button component={RouterLink} to="/history" startIcon={<ArrowBackRoundedIcon />}>
+              {t('replay.backToHistory')}
+            </Button>
+          }
+          aside={
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <StatusBadge
+                label={t(`meeting.status.${meeting.status}`)}
+                tone={getMeetingStatusTone(meeting.status)}
+                icon={getMeetingStatusIcon(meeting.status)}
               />
-              {isRequestingTranslation && <CircularProgress size={20} />}
+              <MetricChip icon={<LanguageRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />} label={t('home.sourceLanguage')} value={meeting.source_language.toUpperCase()} />
+              <MetricChip icon={getDurationMetricIcon()} label={t('history.duration')} value={formatDuration(meeting.duration_seconds)} />
+              <MetricChip label={t('history.createdAt')} value={formatMeetingDate(meeting.created_at)} />
             </Stack>
-          </Stack>
+          }
+        />
+      }
+    >
+      <Grid container spacing={3}>
+        <Grid item xs={12} xl={8}>
+          <SectionStack>
+            {translationError ? <Alert severity="warning">{translationError}</Alert> : null}
 
-          {translationError && (
-            <Alert severity="warning" onClose={() => setTranslationError(null)}>
-              {translationError}
-            </Alert>
-          )}
+            {meetingId ? <TranscriptSearch meetingId={meetingId} onResultClick={handleSearchResultClick} /> : null}
 
-          {meetingId && (
-            <TranscriptSearch
-              meetingId={meetingId}
-              onResultClick={handleSearchResultClick}
-            />
-          )}
+            <SectionCard
+              title={t('replay.transcript')}
+              description={transcriptDescription}
+              actions={
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <LanguageSelector value={selectedLanguage} onChange={handleLanguageChange} disabled={isRequestingTranslation} />
+                  {isRequestingTranslation ? <CircularProgress size={18} /> : null}
+                </Stack>
+              }
+            >
+              <Stack spacing={2}>
+                <TranscriptView
+                  segments={segments}
+                  translations={translations}
+                  selectedLanguage={selectedLanguage}
+                  isLoading={isLoadingTranscript && segments.length === 0}
+                  autoScroll={false}
+                />
 
-          <Box ref={transcriptContainerRef}>
-            <TranscriptView
-              segments={segments}
-              translations={translations}
-              selectedLanguage={selectedLanguage}
-              isLoading={isLoadingTranscript && segments.length === 0}
-              autoScroll={false}
-            />
-          </Box>
+                {hasMoreSegments ? (
+                  <Button variant="outlined" onClick={handleLoadMore} disabled={isLoadingTranscript} startIcon={isLoadingTranscript ? <CircularProgress size={18} /> : undefined}>
+                    {isLoadingTranscript ? t('common.loading') : t('replay.loadMore')}
+                  </Button>
+                ) : null}
+              </Stack>
+            </SectionCard>
+          </SectionStack>
+        </Grid>
 
-          {hasMoreSegments && (
-            <Box display="flex" justifyContent="center">
-              <Button
-                variant="outlined"
-                onClick={handleLoadMore}
-                disabled={isLoadingTranscript}
-                aria-label={t('replay.loadMore')}
-                startIcon={isLoadingTranscript ? <CircularProgress size={18} /> : undefined}
-              >
-                {isLoadingTranscript ? t('common.loading') : t('replay.loadMore')}
-              </Button>
-            </Box>
-          )}
-
-          {transcriptTotal > 0 && (
-            <Typography variant="body2" color="text.secondary" textAlign="center">
-              {t('replay.segmentCount', {
-                loaded: segments.length,
-                total: transcriptTotal,
-              })}
-            </Typography>
-          )}
-        </Stack>
-      </Paper>
-
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack
-            direction="row"
-            spacing={2}
-            alignItems="center"
-            justifyContent="space-between"
-            flexWrap="wrap"
+        <Grid item xs={12} xl={4}>
+          <SectionCard
+            title={t('summary.title')}
+            description={t('summary.description')}
+            actions={
+              !summary && !isLoadingSummary && !isGeneratingSummary ? (
+                <Button variant="contained" onClick={handleGenerateSummary} startIcon={<AutoAwesomeRoundedIcon />} disabled={segments.length === 0}>
+                  {t('replay.generateSummary')}
+                </Button>
+              ) : null
+            }
           >
-            <Typography variant="h6">{t('summary.title')}</Typography>
-
-            {!summary && !isLoadingSummary && !isGeneratingSummary && (
-              <Button
-                variant="contained"
-                onClick={handleGenerateSummary}
-                aria-label={t('replay.generateSummary')}
-                startIcon={<AutoAwesomeRoundedIcon />}
-                disabled={segments.length === 0}
-              >
-                {t('replay.generateSummary')}
-              </Button>
-            )}
-          </Stack>
-
-          <Divider />
-
-          <SummaryView
-            summary={summary}
-            isLoading={isLoadingSummary || isGeneratingSummary}
-            error={summaryError}
-          />
-        </Stack>
-      </Paper>
-    </Stack>
+            <SummaryView summary={summary} isLoading={isLoadingSummary || isGeneratingSummary} error={summaryError} />
+          </SectionCard>
+        </Grid>
+      </Grid>
+    </PageShell>
   );
 }

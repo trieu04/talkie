@@ -1,68 +1,42 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Divider,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, CircularProgress, Grid, Stack } from '@mui/material';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import LanguageRoundedIcon from '@mui/icons-material/LanguageRounded';
+import SensorsRoundedIcon from '@mui/icons-material/SensorsRounded';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 
 import LanguageSelector from '@/components/LanguageSelector';
+import { PageHeader, PageShell } from '@/components/PageShell';
 import ParticipantCount from '@/components/ParticipantCount';
+import { ErrorState, LoadingState } from '@/components/StatePanels';
 import SummaryView from '@/components/SummaryView';
+import { MetricChip, SectionCard, SectionStack, StatusBadge } from '@/components/SurfacePrimitives';
 import TranscriptSearch from '@/components/TranscriptSearch';
 import TranscriptView from '@/components/TranscriptView';
+import { getMeetingStatusIcon, getMeetingStatusTone } from '@/components/meetingUi';
 import { useMeetingWebSocket } from '@/hooks/useMeetingWebSocket';
 import { meetingApi, type JoinMeetingResponse } from '@/services/meetingApi';
 import { useTranscriptStore } from '@/stores';
 import type { MeetingSummary, TranscriptSegment, TranslationMap } from '@/types';
 
 type JoinStatus = 'loading' | 'active' | 'ended' | 'error';
-
 const TRANSCRIPT_PAGE_SIZE = 100;
+const TRANSLATION_ERROR_KEYS = new Set(['replay.transcriptLoadError', 'replay.translationError']);
+const SUMMARY_ERROR_KEYS = new Set(['summary.fetchError', 'replay.summaryError']);
 
-const mergeTranslations = (segments: TranscriptSegment[]): TranslationMap => {
-  return segments.reduce<TranslationMap>((accumulator, segment) => {
+const mergeTranslations = (segments: TranscriptSegment[]): TranslationMap =>
+  segments.reduce<TranslationMap>((accumulator, segment) => {
     if (!segment.translations?.length) {
       return accumulator;
     }
 
     accumulator[segment.id] = {
       ...(accumulator[segment.id] ?? {}),
-      ...Object.fromEntries(
-        segment.translations.map((translation) => [translation.target_language, translation.translated_text]),
-      ),
+      ...Object.fromEntries(segment.translations.map((translation) => [translation.target_language, translation.translated_text])),
     };
     return accumulator;
   }, {});
-};
-
-const getStatusColor = (
-  status: string,
-): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-  switch (status) {
-    case 'created':
-      return 'default';
-    case 'recording':
-      return 'error';
-    case 'paused':
-      return 'warning';
-    case 'ended':
-      return 'success';
-    case 'ended_abnormal':
-      return 'error';
-    default:
-      return 'default';
-  }
-};
 
 export default function JoinMeeting() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -75,16 +49,13 @@ export default function JoinMeeting() {
   const liveSegments = useTranscriptStore((state) => state.segments);
   const liveTranslations = useTranscriptStore((state) => state.translations);
   const isBackfillInProgress = useTranscriptStore((state) => state.isBackfillInProgress);
-  const clearSegments = useTranscriptStore((state) => state.clearSegments);
 
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-
   const [replaySegments, setReplaySegments] = useState<TranscriptSegment[]>([]);
   const [replayTranslations, setReplayTranslations] = useState<TranslationMap>({});
   const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
   const [transcriptTotal, setTranscriptTotal] = useState(0);
   const [hasMoreSegments, setHasMoreSegments] = useState(true);
-
   const [isRequestingTranslation, setIsRequestingTranslation] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
 
@@ -95,11 +66,7 @@ export default function JoinMeeting() {
 
   const shouldConnectWebSocket = joinStatus === 'active' && meetingInfo !== null;
 
-  const {
-    connectionState,
-    participantCount,
-    setLanguage,
-  } = useMeetingWebSocket({
+  const { connectionState, participantCount, setLanguage } = useMeetingWebSocket({
     meetingId: shouldConnectWebSocket ? meetingInfo.meeting_id : '',
     token: '',
     role: 'participant',
@@ -107,9 +74,22 @@ export default function JoinMeeting() {
   });
 
   useEffect(() => {
+    let ignore = false;
+
+    useTranscriptStore.getState().clearSegments();
+    setMeetingInfo(null);
+    setSelectedLanguage(null);
+    setReplaySegments([]);
+    setReplayTranslations({});
+    setTranscriptTotal(0);
+    setHasMoreSegments(true);
+    setTranslationError(null);
+    setSummary(null);
+    setSummaryError(null);
+
     if (!roomCode) {
       setJoinStatus('error');
-      setErrorMessage(t('join.invalidRoomCode'));
+      setErrorMessage('join.invalidRoomCode');
       return;
     }
 
@@ -119,34 +99,35 @@ export default function JoinMeeting() {
 
       try {
         const data = await meetingApi.join(roomCode);
-        setMeetingInfo(data);
-
-        if (data.status === 'ended' || data.status === 'ended_abnormal') {
-          setJoinStatus('ended');
-        } else {
-          setJoinStatus('active');
+        if (ignore) {
+          return;
         }
+        setMeetingInfo(data);
+        setJoinStatus(data.status === 'ended' || data.status === 'ended_abnormal' ? 'ended' : 'active');
       } catch (error) {
+        if (ignore) {
+          return;
+        }
         setJoinStatus('error');
-        setErrorMessage(
-          error instanceof Error ? error.message : t('join.fetchError'),
-        );
+        setErrorMessage(error instanceof Error ? error.message : 'join.fetchError');
       }
     };
 
     void fetchMeetingInfo();
-  }, [roomCode, t]);
-
-  useEffect(() => {
-    clearSegments();
 
     return () => {
-      clearSegments();
+      ignore = true;
     };
-  }, [roomCode, clearSegments]);
+  }, [roomCode]);
+
+  useEffect(() => {
+    return () => {
+      useTranscriptStore.getState().clearSegments();
+    };
+  }, []);
 
   const loadTranscriptPage = useCallback(
-    async (offset: number) => {
+    async (offset: number, languageCode?: string | null) => {
       if (!meetingInfo?.meeting_id) {
         return;
       }
@@ -157,25 +138,23 @@ export default function JoinMeeting() {
         const response = await meetingApi.getPublicTranscript(roomCode ?? '', {
           limit: TRANSCRIPT_PAGE_SIZE,
           offset,
-          ...(selectedLanguage ? { include_translations: selectedLanguage } : {}),
+          ...(languageCode ? { include_translations: languageCode } : {}),
         });
 
-        setReplaySegments((prev) => {
-          const newSegments = response.segments.filter(
-            (segment) => !prev.some((p) => p.id === segment.id),
-          );
-          return [...prev, ...newSegments].sort((a, b) => a.sequence - b.sequence);
+        setReplaySegments((previous) => {
+          const newSegments = response.segments.filter((segment) => !previous.some((current) => current.id === segment.id));
+          return [...previous, ...newSegments].sort((a, b) => a.sequence - b.sequence);
         });
-        setReplayTranslations((prev) => ({ ...prev, ...mergeTranslations(response.segments) }));
+        setReplayTranslations((previous) => ({ ...previous, ...mergeTranslations(response.segments) }));
         setTranscriptTotal(response.total);
         setHasMoreSegments(offset + response.segments.length < response.total);
-      } catch (_error) {
-        // Silently fail - transcript loading is non-critical for UX
+      } catch {
+        setTranslationError('replay.transcriptLoadError');
       } finally {
         setIsLoadingTranscript(false);
       }
     },
-    [roomCode, selectedLanguage],
+    [meetingInfo?.meeting_id, roomCode],
   );
 
   useEffect(() => {
@@ -185,11 +164,11 @@ export default function JoinMeeting() {
 
     setReplaySegments([]);
     setReplayTranslations({});
-    void loadTranscriptPage(0);
-  }, [joinStatus, meetingInfo?.meeting_id, loadTranscriptPage]);
+    void loadTranscriptPage(0, null);
+  }, [joinStatus, loadTranscriptPage, meetingInfo?.meeting_id]);
 
   useEffect(() => {
-    if (joinStatus !== 'ended' || !meetingInfo?.meeting_id || !meetingInfo?.has_summary) {
+    if (joinStatus !== 'ended' || !meetingInfo?.meeting_id || !meetingInfo.has_summary) {
       return;
     }
 
@@ -200,31 +179,30 @@ export default function JoinMeeting() {
       try {
         const data = await meetingApi.getPublicSummary(roomCode ?? '');
         setSummary(data);
-      } catch (_error) {
-        // Silently fail - summary loading is non-critical for UX
+      } catch {
+        setSummaryError('summary.fetchError');
       } finally {
         setIsLoadingSummary(false);
       }
     };
 
     void fetchSummary();
-  }, [joinStatus, meetingInfo?.meeting_id, meetingInfo?.has_summary, roomCode]);
+  }, [joinStatus, meetingInfo?.has_summary, meetingInfo?.meeting_id, roomCode]);
 
   const handleLoadMore = useCallback(() => {
     if (isLoadingTranscript || !hasMoreSegments) {
       return;
     }
-    void loadTranscriptPage(replaySegments.length);
-  }, [isLoadingTranscript, hasMoreSegments, replaySegments.length, loadTranscriptPage]);
+    void loadTranscriptPage(replaySegments.length, selectedLanguage);
+  }, [hasMoreSegments, isLoadingTranscript, loadTranscriptPage, replaySegments.length, selectedLanguage]);
 
   const handleSearchResultClick = useCallback((segmentId: string) => {
     const element = document.getElementById(`segment-${segmentId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      element.style.transition = 'background-color 0.3s';
-      element.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+      element.classList.add('talkie-segment-highlight');
       setTimeout(() => {
-        element.style.backgroundColor = '';
+        element.classList.remove('talkie-segment-highlight');
       }, 2000);
     }
   }, []);
@@ -239,6 +217,7 @@ export default function JoinMeeting() {
       }
 
       if (meetingInfo.available_translations?.includes(languageCode)) {
+        void loadTranscriptPage(0, languageCode);
         return;
       }
 
@@ -246,21 +225,22 @@ export default function JoinMeeting() {
 
       try {
         await meetingApi.requestPublicTranslation(roomCode ?? '', languageCode);
-        setMeetingInfo((prev) =>
-          prev
+        setMeetingInfo((previous) =>
+          previous
             ? {
-                ...prev,
-                available_translations: [...(prev.available_translations ?? []), languageCode],
+                ...previous,
+                available_translations: [...(previous.available_translations ?? []), languageCode],
               }
-            : prev,
+            : previous,
         );
+        void loadTranscriptPage(0, languageCode);
       } catch {
-        setTranslationError(t('replay.translationError'));
+        setTranslationError('replay.translationError');
       } finally {
         setIsRequestingTranslation(false);
       }
     },
-    [meetingInfo, roomCode, t],
+    [loadTranscriptPage, meetingInfo, roomCode],
   );
 
   const handleGenerateSummary = useCallback(async () => {
@@ -275,272 +255,163 @@ export default function JoinMeeting() {
       const response = await meetingApi.generatePublicSummary(roomCode ?? '');
       if (response.status === 'completed' && response.summary) {
         setSummary(response.summary);
-        setMeetingInfo((prev) => (prev ? { ...prev, has_summary: true } : prev));
+        setMeetingInfo((previous) => (previous ? { ...previous, has_summary: true } : previous));
       }
     } catch {
-      setSummaryError(t('replay.summaryError'));
+      setSummaryError('replay.summaryError');
     } finally {
       setIsGeneratingSummary(false);
     }
-  }, [roomCode, meetingInfo?.meeting_id, t]);
+  }, [meetingInfo?.meeting_id, roomCode]);
 
-  const getConnectionStatusLabel = useCallback(() => {
+  const handleLanguageChange = useCallback(
+    (languageCode: string | null) => {
+      setSelectedLanguage(languageCode);
+      setLanguage(languageCode);
+    },
+    [setLanguage],
+  );
+
+  const connectionTone = useMemo(() => {
+    switch (connectionState) {
+      case 'connected':
+        return 'completed' as const;
+      case 'connecting':
+      case 'reconnecting':
+        return 'reconnecting' as const;
+      default:
+        return 'danger' as const;
+    }
+  }, [connectionState]);
+
+  const connectionLabel = useMemo(() => {
     switch (connectionState) {
       case 'connected':
         return t('recording.connected');
       case 'connecting':
       case 'reconnecting':
         return t('recording.reconnecting');
-      case 'disconnected':
-      case 'error':
-        return t('recording.disconnected');
       default:
-        return '';
+        return t('recording.disconnected');
     }
   }, [connectionState, t]);
 
-  const getConnectionStatusColor = useCallback((): 'success' | 'warning' | 'error' => {
-    switch (connectionState) {
-      case 'connected':
-        return 'success';
-      case 'connecting':
-      case 'reconnecting':
-        return 'warning';
-      default:
-        return 'error';
-    }
-  }, [connectionState]);
-
-  const handleLanguageChange = useCallback((languageCode: string | null) => {
-    setSelectedLanguage(languageCode);
-    setLanguage(languageCode);
-  }, [setLanguage]);
-
   if (joinStatus === 'loading') {
-    return (
-      <Stack alignItems="center" justifyContent="center" spacing={2} sx={{ py: 8 }}>
-        <CircularProgress />
-        <Typography variant="body1" color="text.secondary">
-          {t('common.loading')}
-        </Typography>
-      </Stack>
-    );
+    return <LoadingState title={t('join.loadingTitle')} description={t('join.loadingDescription')} />;
   }
 
   if (joinStatus === 'error' || !meetingInfo) {
-    return (
-      <Alert severity="error">
-        {errorMessage ?? t('join.fetchError')}
-      </Alert>
-    );
+    const translatedErrorMessage = errorMessage?.startsWith('join.') ? t(errorMessage) : errorMessage;
+    return <ErrorState title={t('join.errorTitle')} description={translatedErrorMessage ?? t('join.fetchError')} />;
   }
 
   if (joinStatus === 'ended') {
+    const translatedTranslationError = translationError && TRANSLATION_ERROR_KEYS.has(translationError) ? t(translationError) : translationError;
+    const translatedSummaryError = summaryError && SUMMARY_ERROR_KEYS.has(summaryError) ? t(summaryError) : summaryError;
+
     return (
-      <Stack spacing={3}>
-        <Paper sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Typography role="status" aria-live="polite" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-              {isRequestingTranslation ? t('translation.translating') : isGeneratingSummary ? t('summary.generating') : ''}
-            </Typography>
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="flex-start"
-              justifyContent="space-between"
-              flexWrap="wrap"
-            >
-              <Box>
-                <Typography variant="h5" gutterBottom>
-                  {meetingInfo.title ?? t('meeting.untitled')}
-                </Typography>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Chip
-                    size="small"
-                    color={getStatusColor(meetingInfo.status)}
-                    label={t(`meeting.status.${meetingInfo.status}`)}
-                  />
-                  <Chip
-                    size="small"
-                    icon={<LanguageRoundedIcon />}
-                    label={meetingInfo.source_language.toUpperCase()}
-                    variant="outlined"
-                  />
-                </Stack>
-              </Box>
-            </Stack>
-
-            <Alert severity="info">
-              {t('join.meetingEnded')}
-            </Alert>
-          </Stack>
-        </Paper>
-
-        <Paper sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              alignItems={{ xs: 'stretch', sm: 'center' }}
-              justifyContent="space-between"
-            >
-              <Typography variant="h6">{t('join.transcriptReplay')}</Typography>
-
-              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                <LanguageSelector
-                  value={selectedLanguage}
-                  onChange={handleReplayLanguageChange}
-                  disabled={isRequestingTranslation}
+      <PageShell
+        header={
+          <PageHeader
+            eyebrow={t('join.replayEyebrow')}
+            title={meetingInfo.title ?? t('meeting.untitled')}
+            description={t('join.meetingEnded')}
+            aside={
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                <StatusBadge
+                  label={t(`meeting.status.${meetingInfo.status}`)}
+                  tone={getMeetingStatusTone(meetingInfo.status)}
+                  icon={getMeetingStatusIcon(meetingInfo.status)}
                 />
-                {isRequestingTranslation && <CircularProgress size={20} />}
+                <MetricChip icon={<LanguageRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />} label={t('home.sourceLanguage')} value={t(`translation.languages.${meetingInfo.source_language}`)} />
               </Stack>
-            </Stack>
+            }
+          />
+        }
+      >
+        <Grid container spacing={3}>
+          <Grid item xs={12} xl={8}>
+            <SectionStack>
+              {translatedTranslationError ? <Alert severity="warning">{translatedTranslationError}</Alert> : null}
+              <TranscriptSearch roomCode={roomCode ?? ''} onResultClick={handleSearchResultClick} />
+              <SectionCard
+                title={t('join.transcriptReplay')}
+                description={t('replay.segmentCount', { loaded: replaySegments.length, total: transcriptTotal || replaySegments.length })}
+                actions={<LanguageSelector value={selectedLanguage} onChange={handleReplayLanguageChange} disabled={isRequestingTranslation} />}
+              >
+                <Stack spacing={2}>
+                  <TranscriptView
+                    segments={replaySegments}
+                    translations={replayTranslations}
+                    selectedLanguage={selectedLanguage}
+                    isLoading={isLoadingTranscript && replaySegments.length === 0}
+                    autoScroll={false}
+                  />
+                  {hasMoreSegments ? (
+                    <Button variant="outlined" onClick={handleLoadMore} disabled={isLoadingTranscript} startIcon={isLoadingTranscript ? <CircularProgress size={18} /> : undefined}>
+                      {isLoadingTranscript ? t('common.loading') : t('replay.loadMore')}
+                    </Button>
+                  ) : null}
+                </Stack>
+              </SectionCard>
+            </SectionStack>
+          </Grid>
 
-            {translationError && (
-              <Alert severity="warning" onClose={() => setTranslationError(null)}>
-                {translationError}
-              </Alert>
-            )}
-
-            {meetingInfo.meeting_id && (
-              <TranscriptSearch
-                roomCode={roomCode ?? ''}
-                onResultClick={handleSearchResultClick}
-              />
-            )}
-
-            <TranscriptView
-              segments={replaySegments}
-              translations={replayTranslations}
-              selectedLanguage={selectedLanguage}
-              isLoading={isLoadingTranscript && replaySegments.length === 0}
-              autoScroll={false}
-            />
-
-            {hasMoreSegments && (
-              <Box display="flex" justifyContent="center">
-                <Button
-                  variant="outlined"
-                  onClick={handleLoadMore}
-                  disabled={isLoadingTranscript}
-                  aria-label={t('replay.loadMore')}
-                  startIcon={isLoadingTranscript ? <CircularProgress size={18} /> : undefined}
-                >
-                  {isLoadingTranscript ? t('common.loading') : t('replay.loadMore')}
-                </Button>
-              </Box>
-            )}
-
-            {transcriptTotal > 0 && (
-              <Typography variant="body2" color="text.secondary" textAlign="center">
-                {t('replay.segmentCount', {
-                  loaded: replaySegments.length,
-                  total: transcriptTotal,
-                })}
-              </Typography>
-            )}
-          </Stack>
-        </Paper>
-
-        <Paper sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="center"
-              justifyContent="space-between"
-              flexWrap="wrap"
+          <Grid item xs={12} xl={4}>
+            <SectionCard
+              title={t('summary.title')}
+              description={t('summary.description')}
+              actions={
+                !summary && !isLoadingSummary && !isGeneratingSummary ? (
+                  <Button variant="contained" onClick={handleGenerateSummary} startIcon={<AutoAwesomeRoundedIcon />} disabled={replaySegments.length === 0}>
+                    {t('replay.generateSummary')}
+                  </Button>
+                ) : null
+              }
             >
-              <Typography variant="h6">{t('summary.title')}</Typography>
-
-              {!summary && !isLoadingSummary && !isGeneratingSummary && (
-                <Button
-                  variant="contained"
-                  onClick={handleGenerateSummary}
-                  aria-label={t('replay.generateSummary')}
-                  startIcon={<AutoAwesomeRoundedIcon />}
-                  disabled={replaySegments.length === 0}
-                >
-                  {t('replay.generateSummary')}
-                </Button>
-              )}
-            </Stack>
-
-            <Divider />
-
-            <SummaryView
-              summary={summary}
-              isLoading={isLoadingSummary || isGeneratingSummary}
-              error={summaryError}
-            />
-          </Stack>
-        </Paper>
-      </Stack>
+              <SummaryView summary={summary} isLoading={isLoadingSummary || isGeneratingSummary} error={translatedSummaryError} />
+            </SectionCard>
+          </Grid>
+        </Grid>
+      </PageShell>
     );
   }
 
   return (
-    <Stack spacing={3}>
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack
-            direction="row"
-            spacing={2}
-            alignItems="flex-start"
-            justifyContent="space-between"
-            flexWrap="wrap"
-          >
-            <Box>
-              <Typography variant="h5" gutterBottom>
-                {meetingInfo.title ?? t('meeting.untitled')}
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Chip
-                  size="small"
-                  color={getStatusColor(meetingInfo.status)}
-                  label={t(`meeting.status.${meetingInfo.status}`)}
-                />
-                <Chip
-                  size="small"
-                  icon={<LanguageRoundedIcon />}
-                  label={meetingInfo.source_language.toUpperCase()}
-                  variant="outlined"
-                />
-                <ParticipantCount count={participantCount} />
-              </Stack>
-            </Box>
-
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip
-                size="small"
-                color={getConnectionStatusColor()}
-                label={getConnectionStatusLabel()}
-                variant="filled"
+    <PageShell
+      header={
+        <PageHeader
+          eyebrow={t('join.liveEyebrow')}
+          title={meetingInfo.title ?? t('meeting.untitled')}
+          description={t('join.liveDescription')}
+          aside={
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <StatusBadge
+                label={t(`meeting.status.${meetingInfo.status}`)}
+                tone={getMeetingStatusTone(meetingInfo.status)}
+                icon={getMeetingStatusIcon(meetingInfo.status)}
               />
+              <StatusBadge icon={<SensorsRoundedIcon sx={{ fontSize: 16 }} />} label={connectionLabel} tone={connectionTone} />
+              <MetricChip icon={<LanguageRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />} label={t('home.sourceLanguage')} value={t(`translation.languages.${meetingInfo.source_language}`)} />
+              <ParticipantCount count={participantCount} />
             </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-            <Typography variant="h6">{t('meeting.liveTranscript')}</Typography>
-            <LanguageSelector
-              value={selectedLanguage}
-              onChange={handleLanguageChange}
-              disabled={connectionState !== 'connected'}
-            />
-          </Stack>
-          <TranscriptView
-            segments={liveSegments}
-            translations={liveTranslations}
-            selectedLanguage={selectedLanguage}
-            isBackfillInProgress={isBackfillInProgress}
-            autoScroll
-          />
-        </Stack>
-      </Paper>
-    </Stack>
+          }
+        />
+      }
+    >
+      <SectionCard
+        title={t('meeting.liveTranscript')}
+        description={t('join.liveTranscriptDescription')}
+        actions={<LanguageSelector value={selectedLanguage} onChange={handleLanguageChange} disabled={connectionState !== 'connected'} />}
+      >
+        <TranscriptView
+          segments={liveSegments}
+          translations={liveTranslations}
+          selectedLanguage={selectedLanguage}
+          isBackfillInProgress={isBackfillInProgress}
+          autoScroll
+        />
+      </SectionCard>
+    </PageShell>
   );
 }

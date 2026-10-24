@@ -1,16 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  Box,
   Button,
-  Chip,
-  Divider,
-  IconButton,
-  Paper,
-  Skeleton,
+  CircularProgress,
+  Grid,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
@@ -22,38 +16,21 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 
 import LanguageSelector from '@/components/LanguageSelector';
+import { PageHeader, PageShell } from '@/components/PageShell';
 import ProcessingStatus from '@/components/ProcessingStatus';
 import RecordingControls from '@/components/RecordingControls';
+import { ErrorState, LoadingState } from '@/components/StatePanels';
 import SummaryView from '@/components/SummaryView';
-import { SummarySkeleton, TranscriptSkeleton } from '@/components/Skeleton';
+import { MetricChip, SectionCard, SectionStack, StatusBadge } from '@/components/SurfacePrimitives';
 import TranscriptView from '@/components/TranscriptView';
+import { formatMeetingDate, getMeetingStatusIcon, getMeetingStatusTone } from '@/components/meetingUi';
 import { useAudioRecorder, type AudioChunk } from '@/hooks/useAudioRecorder';
-import {
-  useMeetingWebSocket,
-  type ProcessingStatus as ProcessingStatusData,
-} from '@/hooks/useMeetingWebSocket';
+import { useMeetingWebSocket, type ProcessingStatus as ProcessingStatusData } from '@/hooks/useMeetingWebSocket';
 import { meetingApi } from '@/services/meetingApi';
-import { useAuthStore, useMeetingStore, useTranscriptStore } from '@/stores';
+import { showError, showSuccess, useAuthStore, useMeetingStore, useTranscriptStore } from '@/stores';
 import type { MeetingSummary } from '@/types';
 
-const getStatusColor = (
-  status: string,
-): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-  switch (status) {
-    case 'created':
-      return 'default';
-    case 'recording':
-      return 'error';
-    case 'paused':
-      return 'warning';
-    case 'ended':
-      return 'success';
-    case 'ended_abnormal':
-      return 'error';
-    default:
-      return 'default';
-  }
-};
+const buildPublicJoinUrl = (roomCode: string): string => `${window.location.origin}/join/${roomCode}`;
 
 export default function MeetingRoom() {
   const { id: meetingId } = useParams<{ id: string }>();
@@ -71,7 +48,6 @@ export default function MeetingRoom() {
   const [isLoadingMeeting, setIsLoadingMeeting] = useState(false);
   const [meetingError, setMeetingError] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatusData | null>(null);
-  const [copied, setCopied] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
 
   const [summary, setSummary] = useState<MeetingSummary | null>(null);
@@ -81,11 +57,7 @@ export default function MeetingRoom() {
   const meeting = currentMeeting?.id === meetingId ? currentMeeting : null;
 
   useEffect(() => {
-    if (!meetingId) {
-      return;
-    }
-
-    if (meeting) {
+    if (!meetingId || meeting) {
       return;
     }
 
@@ -114,27 +86,20 @@ export default function MeetingRoom() {
     };
 
     void fetchMeeting();
-  }, [meetingId, meeting, setCurrentMeeting, t]);
+  }, [meeting, meetingId, setCurrentMeeting, t]);
 
   useEffect(() => {
     clearSegments();
-
     return () => {
       clearSegments();
     };
-  }, [meetingId, clearSegments]);
+  }, [clearSegments]);
 
   const handleProcessingStatus = useCallback((status: ProcessingStatusData) => {
     setProcessingStatus(status);
   }, []);
 
-  const {
-    connectionState,
-    participantCount,
-    sendAudioChunk,
-    sendRecordingControl,
-    setLanguage,
-  } = useMeetingWebSocket({
+  const { connectionState, participantCount, sendAudioChunk, sendRecordingControl, setLanguage } = useMeetingWebSocket({
     meetingId: meetingId ?? '',
     token: accessToken ?? '',
     role: 'host',
@@ -148,17 +113,8 @@ export default function MeetingRoom() {
     [sendAudioChunk],
   );
 
-  const {
-    isRecording,
-    error: audioError,
-    permissionStatus,
-    startRecording,
-    stopRecording,
-    pauseRecording,
-    resumeRecording,
-  } = useAudioRecorder({
-    onChunkReady: handleChunkReady,
-  });
+  const { isRecording, error: audioError, permissionStatus, startRecording, stopRecording, pauseRecording, resumeRecording } =
+    useAudioRecorder({ onChunkReady: handleChunkReady });
 
   const handleStartRecording = useCallback(async () => {
     sendRecordingControl('start');
@@ -173,26 +129,25 @@ export default function MeetingRoom() {
   const handlePauseRecording = useCallback(() => {
     pauseRecording();
     sendRecordingControl('pause');
-  }, [sendRecordingControl, pauseRecording]);
+  }, [pauseRecording, sendRecordingControl]);
 
-  const handleResumeRecording = useCallback(async () => {
+  const handleResumeRecording = useCallback(() => {
     sendRecordingControl('resume');
     resumeRecording();
-  }, [sendRecordingControl, resumeRecording]);
+  }, [resumeRecording, sendRecordingControl]);
 
   const handleCopyLink = useCallback(async () => {
-    if (!meeting?.join_url) {
+    if (!meeting?.room_code) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(meeting.join_url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(buildPublicJoinUrl(meeting.room_code));
+      showSuccess(t('common.copied'));
     } catch {
-      /* empty */
+      showError(t('common.copyFailed'));
     }
-  }, [meeting?.join_url]);
+  }, [meeting?.room_code, t]);
 
   const handleCopyRoomCode = useCallback(async () => {
     if (!meeting?.room_code) {
@@ -201,20 +156,24 @@ export default function MeetingRoom() {
 
     try {
       await navigator.clipboard.writeText(meeting.room_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      showSuccess(t('common.copied'));
     } catch {
-      /* empty */
+      showError(t('common.copyFailed'));
     }
-  }, [meeting?.room_code]);
+  }, [meeting?.room_code, t]);
 
-  const handleLanguageChange = useCallback((languageCode: string | null) => {
-    setSelectedLanguage(languageCode);
-    setLanguage(languageCode);
-  }, [setLanguage]);
+  const handleLanguageChange = useCallback(
+    (languageCode: string | null) => {
+      setSelectedLanguage(languageCode);
+      setLanguage(languageCode);
+    },
+    [setLanguage],
+  );
 
   const handleGenerateSummary = useCallback(async () => {
-    if (!meetingId) return;
+    if (!meetingId) {
+      return;
+    }
 
     setIsSummaryLoading(true);
     setSummaryError(null);
@@ -228,9 +187,8 @@ export default function MeetingRoom() {
         return;
       }
 
-      // Poll for completion when status is 'processing'
       const pollInterval = 3000;
-      const maxAttempts = 20; // ~60 seconds
+      const maxAttempts = 20;
       let attempts = 0;
 
       const poll = async () => {
@@ -241,7 +199,9 @@ export default function MeetingRoom() {
           setIsSummaryLoading(false);
         } catch {
           if (attempts < maxAttempts) {
-            setTimeout(() => void poll(), pollInterval);
+            setTimeout(() => {
+              void poll();
+            }, pollInterval);
           } else {
             setSummaryError(t('summary.generateError'));
             setIsSummaryLoading(false);
@@ -249,193 +209,136 @@ export default function MeetingRoom() {
         }
       };
 
-      setTimeout(() => void poll(), pollInterval);
+      setTimeout(() => {
+        void poll();
+      }, pollInterval);
     } catch {
       setSummaryError(t('summary.generateError'));
       setIsSummaryLoading(false);
     }
   }, [meetingId, t]);
 
+  const joinUrl = useMemo(
+    () => (meeting ? buildPublicJoinUrl(meeting.room_code) : ''),
+    [meeting],
+  );
+
   if (isLoadingMeeting) {
-    return (
-      <Stack spacing={3}>
-        <Skeleton variant="rounded" height={96} />
-        <SummarySkeleton />
-        <TranscriptSkeleton />
-      </Stack>
-    );
+    return <LoadingState title={t('meeting.loadingTitle')} description={t('meeting.loadingDescription')} />;
   }
 
   if (meetingError || !meeting) {
-    return (
-      <Alert severity="error">
-        {meetingError ?? t('meeting.notFound')}
-      </Alert>
-    );
+    return <ErrorState title={t('meeting.errorTitle')} description={meetingError ?? t('meeting.notFound')} />;
   }
 
-  const joinUrl = meeting.join_url ?? `${window.location.origin}/join/${meeting.room_code}`;
-
   return (
-    <Stack spacing={3}>
-      <Paper component="section" sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack
-            direction="row"
-            spacing={2}
-            alignItems="flex-start"
-            justifyContent="space-between"
-            flexWrap="wrap"
-          >
-            <Box>
-              <Typography component="h1" variant="h5" gutterBottom>
-                {meeting.title ?? t('meeting.untitled')}
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Chip
-                  size="small"
-                  color={getStatusColor(meeting.status)}
-                  label={t(`meeting.status.${meeting.status}`)}
-                />
-                <Chip
-                  size="small"
-                  icon={<LanguageRoundedIcon />}
-                  label={meeting.source_language.toUpperCase()}
-                  variant="outlined"
-                />
-                <Chip
-                  size="small"
-                  icon={<GroupRoundedIcon />}
-                  label={participantCount}
-                  variant="outlined"
-                />
-              </Stack>
-            </Box>
-
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" color="text.secondary" fontFamily="monospace">
-                {meeting.room_code}
-              </Typography>
-              <Tooltip title={copied ? t('common.copied') : t('meeting.copyRoomCode')}>
-                <IconButton size="small" onClick={handleCopyRoomCode} aria-label={t('meeting.copyRoomCode')}>
-                  <ContentCopyRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper component="section" sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Typography component="h2" variant="h6">
-            {t('meeting.recordingControls')}
-          </Typography>
-
-          <RecordingControls
-            status={meeting.status}
-            isConnected={connectionState === 'connected'}
-            isRecording={isRecording}
-            permissionStatus={permissionStatus}
-            startedAt={meeting.started_at ?? null}
-            onStart={handleStartRecording}
-            onStop={handleStopRecording}
-            onPause={handlePauseRecording}
-            onResume={handleResumeRecording}
-            error={audioError}
-          />
-
-          {processingStatus && (
-            <>
-              <Divider />
-              <ProcessingStatus status={processingStatus} />
-            </>
-          )}
-        </Stack>
-      </Paper>
-
-      <Paper component="section" sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-            <Typography component="h2" variant="h6">
-              {t('meeting.liveTranscript')}
-            </Typography>
-            <LanguageSelector
-              value={selectedLanguage}
-              onChange={handleLanguageChange}
-              disabled={connectionState !== 'connected'}
-            />
-          </Stack>
-          <TranscriptView
-            segments={segments}
-            translations={translations}
-            selectedLanguage={selectedLanguage}
-            isBackfillInProgress={isBackfillInProgress}
-            autoScroll
-          />
-        </Stack>
-      </Paper>
-
-      <Paper component="section" sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Typography component="h2" variant="h6">
-            {t('meeting.shareSection')}
-          </Typography>
-
-          <Stack direction="row" spacing={1} alignItems="center">
-            <LinkRoundedIcon color="action" />
-            <Typography variant="body2" color="text.secondary">
-              {t('meeting.joinUrlLabel')}
-            </Typography>
-          </Stack>
-
-          <Stack direction="row" spacing={1}>
-              <TextField
-                value={joinUrl}
-                size="small"
-                fullWidth
-                inputProps={{ 'aria-label': t('meeting.joinUrlLabel') }}
-                InputProps={{
-                  readOnly: true,
-                }}
+    <PageShell
+      header={
+        <PageHeader
+          eyebrow={t('meeting.workspaceEyebrow')}
+          title={meeting.title ?? t('meeting.untitled')}
+          description={t('meeting.workspaceDescription')}
+          aside={
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <StatusBadge
+                label={t(`meeting.status.${meeting.status}`)}
+                tone={getMeetingStatusTone(meeting.status)}
+                icon={getMeetingStatusIcon(meeting.status)}
               />
-              <Tooltip title={copied ? t('common.copied') : t('meeting.copyLink')}>
-                <Button
-                  variant="outlined"
-                  onClick={handleCopyLink}
-                  startIcon={<ContentCopyRoundedIcon />}
-                  aria-label={t('meeting.copyLink')}
-                >
-                  {t('common.copy')}
-                </Button>
-              </Tooltip>
+              <MetricChip icon={<LanguageRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />} label={t('home.sourceLanguage')} value={t(`translation.languages.${meeting.source_language}`)} />
+              <MetricChip icon={<GroupRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />} label={t('meeting.participants')} value={participantCount} />
             </Stack>
+          }
+        />
+      }
+    >
+      <Grid container spacing={3}>
+        <Grid item xs={12} xl={8}>
+          <SectionStack>
+            <SectionCard title={t('meeting.recordingControls')} description={t('meeting.recordingControlsDescription')}>
+              <RecordingControls
+                status={meeting.status}
+                isConnected={connectionState === 'connected'}
+                isRecording={isRecording}
+                permissionStatus={permissionStatus}
+                startedAt={meeting.started_at ?? null}
+                onStart={handleStartRecording}
+                onStop={handleStopRecording}
+                onPause={handlePauseRecording}
+                onResume={handleResumeRecording}
+                error={audioError}
+              />
+            </SectionCard>
 
-          <Typography variant="caption" color="text.secondary">
-            {t('meeting.participantsConnected', { count: participantCount })}
-          </Typography>
-        </Stack>
-      </Paper>
+            {processingStatus ? <ProcessingStatus status={processingStatus} /> : null}
 
-      <Paper component="section" sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          {!summary && !isSummaryLoading && (
-            <Button
-              variant="contained"
-              onClick={handleGenerateSummary}
-              startIcon={<AutoAwesomeRoundedIcon />}
-              disabled={meeting.status !== 'ended' && meeting.status !== 'ended_abnormal'}
+            <SectionCard
+              title={t('meeting.liveTranscript')}
+              description={t('meeting.transcriptDescription')}
+              actions={
+                <LanguageSelector value={selectedLanguage} onChange={handleLanguageChange} disabled={connectionState !== 'connected'} />
+              }
             >
-              {t('summary.generateButton')}
-            </Button>
-          )}
-          <SummaryView
-            summary={summary}
-            isLoading={isSummaryLoading}
-            error={summaryError}
-          />
-        </Stack>
-      </Paper>
-    </Stack>
+              <TranscriptView
+                segments={segments}
+                translations={translations}
+                selectedLanguage={selectedLanguage}
+                isBackfillInProgress={isBackfillInProgress}
+                autoScroll
+              />
+            </SectionCard>
+          </SectionStack>
+        </Grid>
+
+        <Grid item xs={12} xl={4}>
+          <SectionStack>
+            <SectionCard title={t('meeting.shareSection')} description={t('meeting.shareDescription')}>
+              <Stack spacing={2}>
+                <MetricChip label={t('home.roomCode')} value={meeting.room_code} icon={<LinkRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />} />
+                <Stack direction="row" spacing={1}>
+                  <Button variant="outlined" onClick={() => void handleCopyRoomCode()} startIcon={<ContentCopyRoundedIcon />}>
+                    {t('meeting.copyRoomCode')}
+                  </Button>
+                  <Button variant="outlined" onClick={() => void handleCopyLink()} startIcon={<ContentCopyRoundedIcon />}>
+                    {t('meeting.copyLink')}
+                  </Button>
+                </Stack>
+                <TextField value={joinUrl} size="small" inputProps={{ 'aria-label': t('meeting.joinUrlLabel') }} InputProps={{ readOnly: true }} />
+                <Typography variant="body2" color="text.secondary">
+                  {t('meeting.participantsConnected', { count: participantCount })}
+                </Typography>
+              </Stack>
+            </SectionCard>
+
+            <SectionCard
+              title={t('summary.title')}
+              description={t('summary.description')}
+              actions={
+                !summary && !isSummaryLoading ? (
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateSummary}
+                    startIcon={isSummaryLoading ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeRoundedIcon />}
+                    disabled={meeting.status !== 'ended' && meeting.status !== 'ended_abnormal'}
+                  >
+                    {t('summary.generateButton')}
+                  </Button>
+                ) : null
+              }
+            >
+              <SummaryView summary={summary} isLoading={isSummaryLoading} error={summaryError} />
+            </SectionCard>
+
+            <SectionCard title={t('meeting.detailsTitle')} description={t('meeting.detailsDescription')} tone="muted">
+              <Stack spacing={1.5}>
+                <MetricChip label={t('meeting.createdAt')} value={formatMeetingDate(meeting.created_at)} />
+                <MetricChip label={t('meeting.startedAt')} value={formatMeetingDate(meeting.started_at)} />
+                <MetricChip label={t('meeting.connectionState')} value={connectionState} />
+              </Stack>
+            </SectionCard>
+          </SectionStack>
+        </Grid>
+      </Grid>
+    </PageShell>
   );
 }

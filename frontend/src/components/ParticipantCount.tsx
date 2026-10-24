@@ -1,19 +1,20 @@
-import { Chip } from '@mui/material';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
+import { useTranslation } from 'react-i18next';
+
+import { MetricChip } from './SurfacePrimitives';
 
 interface ParticipantCountProps {
   count: number;
-  size?: 'small' | 'medium';
 }
 
-export default function ParticipantCount({ count, size = 'small' }: ParticipantCountProps) {
+export default function ParticipantCount({ count }: ParticipantCountProps) {
+  const { t } = useTranslation();
+
   return (
-    <Chip
-      size={size}
-      icon={<GroupRoundedIcon />}
-      label={count}
-      variant="outlined"
-      aria-label={`Participant count: ${count}`}
+    <MetricChip
+      icon={<GroupRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />}
+      label={t('meeting.participants')}
+      value={count}
     />
   );
 }

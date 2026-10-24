@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode, type SyntheticEvent } from 'react';
 import { Alert, Snackbar } from '@mui/material';
+import { useEffect, type ReactNode, type SyntheticEvent } from 'react';
 
 import { useNotificationStore } from '@/stores/notificationStore';
 
@@ -37,10 +37,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       <Snackbar
         key={notification?.id ?? 'notification-empty'}
         open={Boolean(notification)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         onClose={handleClose}
+        sx={{ mt: 8 }}
       >
-        <Alert onClose={handleClose} severity={notification?.severity ?? 'info'} variant="filled" sx={{ width: '100%' }}>
+        <Alert onClose={handleClose} severity={notification?.severity ?? 'info'} variant="filled" sx={{ width: '100%', minWidth: 280 }}>
           {notification?.message}
         </Alert>
       </Snackbar>

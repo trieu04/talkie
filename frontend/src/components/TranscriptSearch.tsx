@@ -1,13 +1,11 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Box,
   CircularProgress,
   IconButton,
   InputAdornment,
   List,
   ListItemButton,
   ListItemText,
-  Paper,
   Stack,
   TextField,
   Typography,
@@ -17,6 +15,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { useTranslation } from 'react-i18next';
 
 import { meetingApi, type TranscriptSearchResult } from '@/services/meetingApi';
+import { SectionCard } from './SurfacePrimitives';
 
 interface TranscriptSearchProps {
   meetingId?: string;
@@ -46,25 +45,29 @@ function HighlightedText({
   const parts: React.ReactNode[] = [];
   let cursor = 0;
 
-  sorted.forEach((hl, index) => {
-    if (cursor < hl.start) {
-      parts.push(text.slice(cursor, hl.start));
+  sorted.forEach((highlight, index) => {
+    if (cursor < highlight.start) {
+      parts.push(text.slice(cursor, highlight.start));
     }
+
+    const highlightKey = `${highlight.start}-${highlight.end}-${index}`;
+
     parts.push(
-      <Box
-        key={index}
+      <Typography
+        key={highlightKey}
         component="mark"
         sx={{
-          bgcolor: 'warning.light',
-          color: 'warning.contrastText',
-          borderRadius: 0.5,
-          px: 0.25,
+          bgcolor: 'talkie.transcriptHighlight',
+          color: 'text.primary',
+          borderRadius: 1,
+          px: 0.5,
         }}
       >
-        {text.slice(hl.start, hl.end)}
-      </Box>,
+        {text.slice(highlight.start, highlight.end)}
+      </Typography>,
     );
-    cursor = hl.end;
+
+    cursor = highlight.end;
   });
 
   if (cursor < text.length) {
@@ -82,9 +85,18 @@ export default function TranscriptSearch({ meetingId, roomCode, onResultClick }:
   const [hasSearched, setHasSearched] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
   const performSearch = useCallback(
     async (searchQuery: string) => {
-      if (searchQuery.trim().length < 2) {
+      const normalizedQuery = searchQuery.trim();
+      if (normalizedQuery.length < 2) {
         setResults([]);
         setHasSearched(false);
         return;
@@ -95,10 +107,10 @@ export default function TranscriptSearch({ meetingId, roomCode, onResultClick }:
 
       try {
         const response = roomCode
-          ? await meetingApi.searchPublicTranscript(roomCode, searchQuery.trim())
+          ? await meetingApi.searchPublicTranscript(roomCode, normalizedQuery)
           : meetingId
-            ? await meetingApi.searchTranscript(meetingId, searchQuery.trim())
-            : { results: [], total: 0, query: searchQuery.trim() };
+            ? await meetingApi.searchTranscript(meetingId, normalizedQuery)
+            : { results: [], total: 0, query: normalizedQuery };
         setResults(response.results);
       } catch {
         setResults([]);
@@ -120,7 +132,7 @@ export default function TranscriptSearch({ meetingId, roomCode, onResultClick }:
 
       debounceRef.current = setTimeout(() => {
         void performSearch(value);
-      }, 400);
+      }, 350);
     },
     [performSearch],
   );
@@ -144,82 +156,77 @@ export default function TranscriptSearch({ meetingId, roomCode, onResultClick }:
         void performSearch(query);
       }
     },
-    [query, performSearch],
+    [performSearch, query],
   );
 
   return (
-    <Stack component="section" spacing={1} aria-label="Transcript search">
-      <TextField
-        size="small"
-        placeholder={t('replay.searchPlaceholder')}
-        value={query}
-        onChange={handleQueryChange}
-        onKeyDown={handleKeyDown}
-        inputProps={{ 'aria-label': t('replay.searchPlaceholder') }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchRoundedIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
-            </InputAdornment>
-          ),
-          endAdornment: (
-            <InputAdornment position="end">
-              {isSearching ? (
-                <CircularProgress size={18} />
-              ) : query ? (
-                <IconButton size="small" onClick={handleClear} aria-label="Clear search">
-                  <ClearRoundedIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              ) : null}
-            </InputAdornment>
-          ),
-        }}
-      />
+    <SectionCard title={t('replay.searchTitle')} description={t('replay.searchDescription')} tone="muted">
+      <Stack spacing={1.5}>
+        <TextField
+          size="small"
+          placeholder={t('replay.searchPlaceholder')}
+          value={query}
+          onChange={handleQueryChange}
+          onKeyDown={handleKeyDown}
+          inputProps={{ 'aria-label': t('replay.searchPlaceholder') }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchRoundedIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                {isSearching ? (
+                  <CircularProgress size={18} />
+                ) : query ? (
+                  <IconButton size="small" onClick={handleClear} aria-label={t('replay.clearSearch')}>
+                    <ClearRoundedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                ) : null}
+              </InputAdornment>
+            ),
+          }}
+        />
 
-      {hasSearched && !isSearching && results.length === 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }} role="status" aria-live="polite">
-          {t('replay.searchNoResults')}
-        </Typography>
-      )}
-
-      {results.length > 0 && (
-        <Paper
-          variant="outlined"
-          role="region"
-          aria-label="Transcript search results"
-          aria-live="polite"
-          aria-atomic="true"
-          sx={{ maxHeight: 240, overflowY: 'auto' }}
-        >
-          <List dense disablePadding>
-            {results.map((result) => (
-              <ListItemButton
-                key={result.segment_id}
-                onClick={() => onResultClick(result.segment_id)}
-                divider
-              >
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" component="span">
-                      <HighlightedText text={result.text} highlights={result.highlights} />
-                    </Typography>
-                  }
-                  secondary={formatTimestamp(result.start_time_ms)}
-                />
-              </ListItemButton>
-            ))}
-          </List>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ p: 1, display: 'block' }}
-            role="status"
-            aria-live="polite"
-          >
-            {t('replay.searchResultCount', { count: results.length })}
+        {hasSearched && !isSearching && results.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" role="status" aria-live="polite">
+            {t('replay.searchNoResults')}
           </Typography>
-        </Paper>
-      )}
-    </Stack>
+        ) : null}
+
+        {results.length > 0 ? (
+          <Stack spacing={1}>
+            <List dense disablePadding sx={{ display: 'grid', gap: 1 }}>
+              {results.map((result) => (
+                <ListItemButton
+                  key={result.segment_id}
+                  onClick={() => onResultClick(result.segment_id)}
+                  sx={{
+                    borderRadius: 3,
+                    bgcolor: 'background.paper',
+                    border: 1,
+                    borderColor: 'talkie.borderSubtle',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" component="span" sx={{ display: 'inline-flex', flexWrap: 'wrap', gap: 0.25 }}>
+                        <HighlightedText text={result.text} highlights={result.highlights} />
+                      </Typography>
+                    }
+                    secondary={formatTimestamp(result.start_time_ms)}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+            <Typography variant="caption" color="text.secondary" role="status" aria-live="polite">
+              {t('replay.searchResultCount', { count: results.length })}
+            </Typography>
+          </Stack>
+        ) : null}
+      </Stack>
+    </SectionCard>
   );
 }

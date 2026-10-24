@@ -1,15 +1,24 @@
-import { Card, CardContent, Paper, Skeleton as MuiSkeleton, Stack, Box } from '@mui/material';
+import { Box, Card, CardContent, Paper, Skeleton as MuiSkeleton, Stack } from '@mui/material';
+
+const TRANSCRIPT_SKELETON_ROWS = [
+  { id: 'row-1', primaryWidth: '90%', secondaryWidth: '70%' },
+  { id: 'row-2', primaryWidth: '85%', secondaryWidth: '62%' },
+  { id: 'row-3', primaryWidth: '80%', secondaryWidth: '54%' },
+  { id: 'row-4', primaryWidth: '75%', secondaryWidth: '70%' },
+  { id: 'row-5', primaryWidth: '70%', secondaryWidth: '62%' },
+  { id: 'row-6', primaryWidth: '65%', secondaryWidth: '54%' },
+] as const;
 
 export function TranscriptSkeleton() {
   return (
     <Paper elevation={0} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
       <Stack spacing={2}>
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Stack key={index} direction="row" spacing={2} alignItems="flex-start">
+        {TRANSCRIPT_SKELETON_ROWS.map((row) => (
+          <Stack key={row.id} direction="row" spacing={2} alignItems="flex-start">
             <MuiSkeleton variant="text" width={52} height={20} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <MuiSkeleton variant="text" width={`${90 - index * 5}%`} />
-              <MuiSkeleton variant="text" width={`${70 - (index % 3) * 8}%`} />
+              <MuiSkeleton variant="text" width={row.primaryWidth} />
+              <MuiSkeleton variant="text" width={row.secondaryWidth} />
             </Box>
           </Stack>
         ))}

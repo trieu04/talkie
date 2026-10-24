@@ -1,18 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import {
-  Box,
-  CircularProgress,
-  Fade,
-  LinearProgress,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Box, CircularProgress, Fade, LinearProgress, Stack, Typography } from '@mui/material';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 import { keyframes } from '@mui/system';
 import { useTranslation } from 'react-i18next';
 
 import type { TranscriptSegment, TranslationMap } from '@/types';
+import { EmptyState } from './StatePanels';
+import { SectionCard } from './SurfacePrimitives';
 
 interface TranscriptViewProps {
   segments: TranscriptSegment[];
@@ -28,7 +23,7 @@ const pulseAnimation = keyframes`
     opacity: 1;
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.45;
   }
 `;
 
@@ -58,160 +53,84 @@ const SegmentItem = memo(function SegmentItem({
   const showConfidence = !isPartial && segment.confidence !== undefined && segment.confidence >= 0.8;
 
   return (
-    <Fade in timeout={300}>
-      <Paper
+    <Fade in timeout={240}>
+      <Box
         component="article"
         id={`segment-${segment.id}`}
-        elevation={0}
         sx={{
-          p: 2,
-          bgcolor: isPartial ? 'action.hover' : 'background.paper',
+          position: 'relative',
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '80px minmax(0, 1fr)' },
+          gap: 1.5,
+          px: { xs: 2, sm: 2.5 },
+          py: 2,
+          borderRadius: 4,
           border: 1,
-          borderColor: isPartial ? 'divider' : 'transparent',
-          transition: 'all 0.2s ease-in-out',
+          borderColor: isPartial ? 'talkie.borderStrong' : 'transparent',
+          bgcolor: isPartial ? 'talkie.transcriptPending' : 'background.paper',
+          transition: 'background-color 0.2s ease, border-color 0.2s ease',
         }}
       >
-        <Stack direction="row" spacing={2} alignItems="flex-start">
-          <Typography
-            variant="caption"
-            sx={{
-              color: 'text.secondary',
-              fontFamily: 'monospace',
-              fontWeight: 500,
-              minWidth: 48,
-              pt: 0.25,
-            }}
-          >
-            {formatTimestamp(segment.start_time_ms)}
-          </Typography>
+        <Typography
+          variant="monoLabel"
+          color="text.tertiary"
+          sx={{ pt: { sm: 0.5 } }}
+        >
+          {formatTimestamp(segment.start_time_ms)}
+        </Typography>
 
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography
-                variant="body1"
-                sx={{
-                  fontStyle: isPartial ? 'italic' : 'normal',
-                  color: isPartial ? 'text.secondary' : 'text.primary',
-                  animation: isPartial ? `${pulseAnimation} 1.5s ease-in-out infinite` : 'none',
-                  flex: 1,
-                }}
-              >
-                {segment.text}
-              </Typography>
+        <Box minWidth={0}>
+          <Stack direction="row" spacing={1} alignItems="flex-start">
+            <Typography
+              variant="body1"
+              sx={{
+                flex: 1,
+                color: isPartial ? 'text.secondary' : 'text.primary',
+                fontStyle: isPartial ? 'italic' : 'normal',
+                animation: isPartial ? `${pulseAnimation} 1.6s ease-in-out infinite` : 'none',
+              }}
+            >
+              {segment.text}
+            </Typography>
+            {isPartial ? (
+              <MoreHorizRoundedIcon sx={{ fontSize: 18, color: 'primary.main', animation: `${pulseAnimation} 1s ease-in-out infinite` }} />
+            ) : null}
+            {showConfidence ? <CheckCircleOutlineRoundedIcon sx={{ fontSize: 18, color: 'success.main' }} /> : null}
+          </Stack>
 
-              {isPartial && (
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: 'primary.main',
-                    animation: `${pulseAnimation} 1s ease-in-out infinite`,
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-
-              {showConfidence && (
-                <CheckCircleOutlineRoundedIcon
-                  sx={{
-                    fontSize: 16,
-                    color: 'success.main',
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-            </Stack>
-
-            {selectedLanguage && (
-              <Box sx={{ mt: 1, pl: 1, borderLeft: 2, borderColor: 'primary.main' }}>
-                {translation ? (
-                  <Stack spacing={0.25}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: 'primary.main',
-                        fontWeight: 600,
-                        fontSize: '0.65rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      {selectedLanguage.toUpperCase()}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: 'text.secondary',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      {translation}
-                    </Typography>
-                  </Stack>
-                ) : isTranslationPending ? (
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <CircularProgress size={12} />
-                    <Typography variant="body2" color="text.disabled">
-                      {t('translation.translating')}
-                    </Typography>
-                  </Stack>
-                ) : null}
-              </Box>
-            )}
-          </Box>
-        </Stack>
-      </Paper>
+          {selectedLanguage ? (
+            <Box
+              sx={{
+                mt: 1.25,
+                pl: 1.5,
+                borderLeft: 2,
+                borderColor: 'primary.main',
+              }}
+            >
+              {translation ? (
+                <Stack spacing={0.5}>
+                  <Typography variant="monoLabel" color="primary.main">
+                    {selectedLanguage.toUpperCase()}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    {translation}
+                  </Typography>
+                </Stack>
+              ) : isTranslationPending ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={12} />
+                  <Typography variant="body2" color="text.disabled">
+                    {t('translation.translating')}
+                  </Typography>
+                </Stack>
+              ) : null}
+            </Box>
+          ) : null}
+        </Box>
+      </Box>
     </Fade>
   );
 });
-
-function EmptyState({ isLoading, t }: { isLoading: boolean; t: (key: string) => string }) {
-  return (
-    <Stack
-      alignItems="center"
-      justifyContent="center"
-      spacing={2}
-      sx={{ py: 8 }}
-    >
-      {isLoading ? (
-        <>
-          <CircularProgress size={32} />
-          <Typography variant="body2" color="text.secondary">
-            {t('translation.loadingTranscript')}
-          </Typography>
-        </>
-      ) : (
-        <>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              bgcolor: 'action.hover',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Box
-              sx={{
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                bgcolor: 'text.disabled',
-                animation: `${pulseAnimation} 2s ease-in-out infinite`,
-              }}
-            />
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            {t('translation.waitingForSpeech')}
-          </Typography>
-        </>
-      )}
-    </Stack>
-  );
-}
 
 export default function TranscriptView({
   segments,
@@ -225,17 +144,11 @@ export default function TranscriptView({
   const containerRef = useRef<HTMLDivElement>(null);
   const prevSegmentCountRef = useRef(segments.length);
 
-  const sortedSegments = useMemo(
-    () => [...segments].sort((a, b) => a.sequence - b.sequence),
-    [segments],
-  );
+  const sortedSegments = useMemo(() => [...segments].sort((a, b) => a.sequence - b.sequence), [segments]);
 
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: containerRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
+      containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, []);
 
@@ -244,9 +157,35 @@ export default function TranscriptView({
       scrollToBottom();
     }
     prevSegmentCountRef.current = segments.length;
-  }, [segments.length, autoScroll, scrollToBottom]);
+  }, [autoScroll, scrollToBottom, segments.length]);
 
-  const hasSegments = sortedSegments.length > 0;
+  if (!sortedSegments.length) {
+    return (
+      <Box
+        component="section"
+        role="log"
+        aria-label="Live transcript"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-atomic="false"
+        aria-busy={isLoading || isBackfillInProgress}
+        tabIndex={0}
+      >
+        {isLoading ? (
+          <SectionCard tone="muted">
+            <Stack spacing={2} alignItems="flex-start" sx={{ py: 2 }}>
+              <CircularProgress size={28} />
+              <Typography variant="body2" color="text.secondary">
+                {t('translation.loadingTranscript')}
+              </Typography>
+            </Stack>
+          </SectionCard>
+        ) : (
+          <EmptyState title={t('translation.waitingTitle')} description={t('translation.waitingForSpeech')} />
+        )}
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -260,73 +199,51 @@ export default function TranscriptView({
       aria-busy={isLoading || isBackfillInProgress}
       tabIndex={0}
       sx={{
-        maxHeight: 480,
+        maxHeight: 560,
         overflowY: 'auto',
         scrollBehavior: 'smooth',
-        bgcolor: 'background.default',
-        borderRadius: 2,
+        bgcolor: 'background.level1',
+        borderRadius: 6,
         border: 1,
-        borderColor: 'divider',
-        position: 'relative',
+        borderColor: 'talkie.borderSubtle',
         outline: 'none',
+        px: { xs: 0.5, sm: 1 },
+        py: 1,
         '&:focus-visible': {
           outline: '3px solid',
           outlineColor: 'primary.main',
           outlineOffset: 2,
-          borderRadius: 2,
         },
       }}
     >
-      {hasSegments && (
-        <Box
-          sx={{
-            position: 'absolute',
-            left: 32,
-            top: 0,
-            bottom: 0,
-            width: 2,
-            bgcolor: 'divider',
-            zIndex: 0,
-          }}
-        />
-      )}
-
-      {isBackfillInProgress && selectedLanguage && (
-        <Box sx={{ px: 2, pt: 2 }}>
-          <Stack spacing={0.5}>
+      {isBackfillInProgress && selectedLanguage ? (
+        <Box sx={{ px: 2, pt: 1.5 }}>
+          <Stack spacing={0.75}>
             <Typography variant="caption" color="text.secondary">
               {t('translation.backfillInProgress')}
             </Typography>
-            <LinearProgress variant="indeterminate" sx={{ borderRadius: 1 }} />
+            <LinearProgress variant="indeterminate" sx={{ borderRadius: 999 }} />
           </Stack>
         </Box>
-      )}
+      ) : null}
 
-      <Stack spacing={1} sx={{ p: 2, position: 'relative', zIndex: 1 }}>
-        {hasSegments ? (
-          sortedSegments.map((segment) => {
-            const segmentTranslations = translations[segment.id];
-            const translation = selectedLanguage && segmentTranslations
-              ? segmentTranslations[selectedLanguage]
-              : undefined;
-            const isTranslationPending = Boolean(
-              selectedLanguage && !segment.is_partial && !translation,
-            );
+      <Stack spacing={1.25} sx={{ position: 'relative', py: 1 }}>
+        {sortedSegments.map((segment) => {
+          const segmentTranslations = translations[segment.id];
+          const translation = selectedLanguage && segmentTranslations ? segmentTranslations[selectedLanguage] : undefined;
+          const isTranslationPending = Boolean(selectedLanguage && !segment.is_partial && !translation);
 
-            return (
-              <SegmentItem
-                key={segment.id}
-                segment={segment}
-                translation={translation}
-                selectedLanguage={selectedLanguage}
-                isTranslationPending={isTranslationPending}
-                t={t}
-              />
-            );
-          })
-        ) : (
-          <EmptyState isLoading={isLoading} t={t} />
-        )}
+          return (
+            <SegmentItem
+              key={segment.id}
+              segment={segment}
+              translation={translation}
+              selectedLanguage={selectedLanguage}
+              isTranslationPending={isTranslationPending}
+              t={t}
+            />
+          );
+        })}
       </Stack>
     </Box>
   );

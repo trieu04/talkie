@@ -47,12 +47,16 @@ export interface JoinMeetingResponse {
   meeting_id: string;
   title: string | null;
   source_language: string;
-  status: string;
+  status: MeetingStatus;
   started_at: string | null;
   websocket_url: string;
   has_transcript?: boolean;
   has_summary?: boolean;
   available_translations?: string[];
+}
+
+interface BackendJoinMeetingResponse extends Omit<JoinMeetingResponse, 'status'> {
+  status: string;
 }
 
 export interface TranscriptResponse {
@@ -197,6 +201,15 @@ const toGenerateSummaryResponse = (
   };
 };
 
+const MEETING_STATUSES = new Set<MeetingStatus>(['created', 'recording', 'paused', 'ended', 'ended_abnormal']);
+
+const normalizeMeetingStatus = (status: string): MeetingStatus => (MEETING_STATUSES.has(status as MeetingStatus) ? status as MeetingStatus : 'created');
+
+const toJoinMeetingResponse = (response: BackendJoinMeetingResponse): JoinMeetingResponse => ({
+  ...response,
+  status: normalizeMeetingStatus(response.status),
+});
+
 export const meetingApi = {
   create: async (data: MeetingCreate): Promise<MeetingResponse> => {
     const response = await api.post<MeetingResponse>('/meetings', data);
@@ -228,8 +241,8 @@ export const meetingApi = {
   },
 
   join: async (roomCode: string): Promise<JoinMeetingResponse> => {
-    const response = await api.get<JoinMeetingResponse>(`/meetings/join/${roomCode}`);
-    return response.data;
+    const response = await api.get<BackendJoinMeetingResponse>(`/meetings/join/${roomCode}`);
+    return toJoinMeetingResponse(response.data);
   },
 
   getTranscript: async (

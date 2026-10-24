@@ -1,17 +1,11 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Link as MuiLink,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material';
+import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded';
 import { Link as RouterLink, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { PageHeader, PageShell } from '@/components/PageShell';
+import { SectionCard, SectionStack } from '@/components/SurfacePrimitives';
 import { useAuthStore } from '@/stores';
 
 interface RegisterFormState {
@@ -45,30 +39,14 @@ export default function Register() {
 
   const fieldErrors = useMemo(
     () => ({
-      email:
-        touched.email && !isValidEmail(form.email) ? t('auth.invalidEmail') : undefined,
+      email: touched.email && !isValidEmail(form.email) ? t('auth.invalidEmail') : undefined,
       displayName:
-        touched.displayName && form.displayName.trim().length === 0
-          ? t('auth.displayNameRequired')
-          : undefined,
-      password:
-        touched.password && form.password.length < 8 ? t('auth.passwordTooShort') : undefined,
+        touched.displayName && form.displayName.trim().length === 0 ? t('auth.displayNameRequired') : undefined,
+      password: touched.password && form.password.length < 8 ? t('auth.passwordTooShort') : undefined,
       confirmPassword:
-        touched.confirmPassword && form.confirmPassword !== form.password
-          ? t('auth.passwordMismatch')
-          : undefined,
+        touched.confirmPassword && form.confirmPassword !== form.password ? t('auth.passwordMismatch') : undefined,
     }),
-    [
-      form.confirmPassword,
-      form.displayName,
-      form.email,
-      form.password,
-      t,
-      touched.confirmPassword,
-      touched.displayName,
-      touched.email,
-      touched.password,
-    ],
+    [form.confirmPassword, form.displayName, form.email, form.password, t, touched.confirmPassword, touched.displayName, touched.email, touched.password],
   );
 
   const isFormValid =
@@ -118,77 +96,97 @@ export default function Register() {
   };
 
   return (
-    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100%">
-      <Paper elevation={0} sx={{ width: '100%', maxWidth: 560, p: 4 }}>
-        <Stack spacing={3} component="form" onSubmit={handleSubmit} noValidate>
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              {t('auth.registerTitle')}
+    <PageShell
+      maxWidth="lg"
+      header={
+        <PageHeader
+          eyebrow={t('auth.eyebrow')}
+          title={t('auth.registerTitle')}
+          description={t('auth.registerSubtitle')}
+        />
+      }
+    >
+      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="stretch">
+        <SectionCard tone="accent">
+          <SectionStack>
+            <Typography variant="sectionTitle">{t('auth.registerValueTitle')}</Typography>
+            <Typography variant="body1" color="text.secondary">
+              {t('auth.registerValueDescription')}
             </Typography>
-            <Typography color="text.secondary">{t('auth.registerSubtitle')}</Typography>
-          </Box>
+            <Stack spacing={1.25}>
+              <Typography variant="body2">{t('auth.valuePointOne')}</Typography>
+              <Typography variant="body2">{t('auth.valuePointTwo')}</Typography>
+              <Typography variant="body2">{t('auth.valuePointThree')}</Typography>
+            </Stack>
+          </SectionStack>
+        </SectionCard>
 
-          {error ? <Alert severity="error">{error || t('auth.registerFailed')}</Alert> : null}
+        <SectionCard title={t('common.register')} description={t('auth.formDescription')}>
+          <Stack spacing={3} component="form" onSubmit={handleSubmit} noValidate>
+            {error ? <Alert severity="error">{error || t('auth.registerFailed')}</Alert> : null}
 
-          <TextField
-            label={t('common.displayName')}
-            value={form.displayName}
-            onChange={handleChange('displayName')}
-            onBlur={() => setTouched((previous) => ({ ...previous, displayName: true }))}
-            error={Boolean(fieldErrors.displayName)}
-            helperText={fieldErrors.displayName}
-            autoComplete="name"
-            fullWidth
-          />
+            <TextField
+              label={t('common.displayName')}
+              value={form.displayName}
+              onChange={handleChange('displayName')}
+              onBlur={() => setTouched((previous) => ({ ...previous, displayName: true }))}
+              error={Boolean(fieldErrors.displayName)}
+              helperText={fieldErrors.displayName}
+              autoComplete="name"
+            />
 
-          <TextField
-            label={t('common.email')}
-            type="email"
-            value={form.email}
-            onChange={handleChange('email')}
-            onBlur={() => setTouched((previous) => ({ ...previous, email: true }))}
-            error={Boolean(fieldErrors.email)}
-            helperText={fieldErrors.email}
-            autoComplete="email"
-            fullWidth
-          />
+            <TextField
+              label={t('common.email')}
+              type="email"
+              value={form.email}
+              onChange={handleChange('email')}
+              onBlur={() => setTouched((previous) => ({ ...previous, email: true }))}
+              error={Boolean(fieldErrors.email)}
+              helperText={fieldErrors.email}
+              autoComplete="email"
+            />
 
-          <TextField
-            label={t('common.password')}
-            type="password"
-            value={form.password}
-            onChange={handleChange('password')}
-            onBlur={() => setTouched((previous) => ({ ...previous, password: true }))}
-            error={Boolean(fieldErrors.password)}
-            helperText={fieldErrors.password}
-            autoComplete="new-password"
-            fullWidth
-          />
+            <TextField
+              label={t('common.password')}
+              type="password"
+              value={form.password}
+              onChange={handleChange('password')}
+              onBlur={() => setTouched((previous) => ({ ...previous, password: true }))}
+              error={Boolean(fieldErrors.password)}
+              helperText={fieldErrors.password}
+              autoComplete="new-password"
+            />
 
-          <TextField
-            label={t('common.confirmPassword')}
-            type="password"
-            value={form.confirmPassword}
-            onChange={handleChange('confirmPassword')}
-            onBlur={() => setTouched((previous) => ({ ...previous, confirmPassword: true }))}
-            error={Boolean(fieldErrors.confirmPassword)}
-            helperText={fieldErrors.confirmPassword}
-            autoComplete="new-password"
-            fullWidth
-          />
+            <TextField
+              label={t('common.confirmPassword')}
+              type="password"
+              value={form.confirmPassword}
+              onChange={handleChange('confirmPassword')}
+              onBlur={() => setTouched((previous) => ({ ...previous, confirmPassword: true }))}
+              error={Boolean(fieldErrors.confirmPassword)}
+              helperText={fieldErrors.confirmPassword}
+              autoComplete="new-password"
+            />
 
-          <Button type="submit" variant="contained" size="large" disabled={isLoading || !isFormValid}>
-            {t('common.register')}
-          </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isLoading || !isFormValid}
+              startIcon={<PersonAddAltRoundedIcon />}
+            >
+              {t('common.register')}
+            </Button>
 
-          <Typography color="text.secondary" textAlign="center">
-            {t('auth.hasAccount')}{' '}
-            <MuiLink component={RouterLink} to="/login">
-              {t('common.login')}
-            </MuiLink>
-          </Typography>
-        </Stack>
-      </Paper>
-    </Box>
+            <Typography color="text.secondary">
+              {t('auth.hasAccount')}{' '}
+              <MuiLink component={RouterLink} to="/login">
+                {t('common.login')}
+              </MuiLink>
+            </Typography>
+          </Stack>
+        </SectionCard>
+      </Stack>
+    </PageShell>
   );
 }
